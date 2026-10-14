@@ -29,6 +29,8 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Twips
 
+import note
+
 MINCHO = "游明朝"
 GOTHIC = "Yu Gothic"
 NAVY = RGBColor(0x1F, 0x4E, 0x79)
@@ -344,10 +346,22 @@ def build(data, out_path):
     unused = [cid for cid in ids if f"[[{cid}]]" not in revised]
     if unused:
         print(f"注意: 修正後の文章に番号が入っていない指摘: {', '.join(circled(ids[c]) for c in unused)}")
+    flags = []
+    if not data.get("prompt"):
+        flags.append("設問なし")
+    if not data.get("admission_policy"):
+        flags.append("志望校不明")
+    if data.get("transcription_notes"):
+        flags.append("文字起こし要確認")
+    if "〔" in revised:
+        flags.append("〔 〕あり")
+    note.append(Path(out_path).parent, Path(out_path).stem.removesuffix("_添削完了"), "納品",
+                rank=(overall or {}).get("rank", ""), count=f"{len(spans)}件", notes="・".join(flags))
     print(f"保存しました: {out_path}（指摘 {len(spans)} 件）")
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")
     if len(sys.argv) != 3:
         sys.exit(__doc__)
     with open(sys.argv[1], encoding="utf-8") as f:
