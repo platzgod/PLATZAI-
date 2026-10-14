@@ -25,6 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import data as D  # noqa: E402
 import handout as H  # noqa: E402
+import graphs as G  # noqa: E402
 from package import make_xlsm  # noqa: E402
 from vbaproject import build_vba_project  # noqa: E402
 
@@ -268,13 +269,14 @@ def build(src_path, out_path, sample=None):
     ws_ho = wb.create_sheet(H.SHEET)
     ws_mock = wb.create_sheet("模試・自学")
     ws_rep = wb.create_sheet("成績表")
+    ws_graph = wb.create_sheet(G.SHEET)
     ws_set = wb.create_sheet("設定")
     ws_univ = wb.create_sheet("志望校マスタ")
     ws_mat = wb.create_sheet("教材マスタ")
     ws_course = wb.create_sheet("講座マスタ")
     ws_db = wb.create_sheet("カリキュラムDB")
     ws_ky = wb.create_sheet("共テDB")
-    codenames = {ws_how: "shHowTo", ws_in: "shInput", ws_plan: "shPlan", ws_ho: "shHandout", ws_mock: "shMock", ws_rep: "shReport",
+    codenames = {ws_how: "shHowTo", ws_in: "shInput", ws_plan: "shPlan", ws_ho: "shHandout", ws_mock: "shMock", ws_rep: "shReport", ws_graph: "shGraph",
                  ws_set: "shSetting", ws_univ: "shUniv", ws_mat: "shMaterial", ws_course: "shCourse",
                  ws_db: "shDB", ws_ky: "shKyote"}
     for ws, cn in codenames.items():
@@ -299,6 +301,7 @@ def build(src_path, out_path, sample=None):
     # ================================================================ 模試・自学 / 成績表
     build_mock(ws_mock, old_mock)
     build_report(ws_rep, old_rep)
+    G.build(ws_graph)
     build_howto(ws_how)
 
     # 初期表示：サンプル入力でおすすめを反映しておく
@@ -1018,10 +1021,13 @@ def build_howto(ws):
         ("受講した回・進んだ月は、セルをダブルクリック（タブレットはダブルタップ）で ☑。もう一度で外れます。右側は共通テスト対策（9月〜12月）。", ""),
         ("設定シートの終了日を過ぎても ☑ がない回・☐ は赤くなります。S列に科目ごとの進捗（回数・遅れ・％）。", ""),
         ("講座や教材を個別に変えたいときは、管理表のセルを直接書き換えてかまいません（再反映すると元に戻ります）。", ""),
+        ("2-2. 配布用カリキュラム（生徒に渡す・A3横）", "h"),
+        ("管理表からチェック欄・進捗・空欄を除いて自動で作られます（反映のたびに更新）。共通テスト講座は各科目の9〜12月に入ります。『配布用を印刷』ボタンで印刷。", ""),
         ("3. 模試・自学シート", "h"),
         ("模試の偏差値を古い順に入力。② の家庭学習推奨教材は反映時に自動で並ぶので、『現在（周）』だけ毎回入力。③講師コメント・④次回の目標も入力。", ""),
         ("4. 成績表（A4縦）", "h"),
-        ("『成績表を印刷』ボタンで、使っていない行を隠して印刷プレビューを開きます。総合達成度＝講座の受講・模試・家庭学習教材の平均。", ""),
+        ("『成績表を印刷』ボタンで、使っていない行を隠して、成績表と成績グラフ（2枚）の印刷プレビューを開きます。総合達成度＝講座の受講・模試・家庭学習教材の平均。", ""),
+        ("成績グラフ：達成度のドーナツ（総合・講座・模試・家庭学習）、期間ごとの受講回数（予定と受講済み）、模試の偏差値の推移。数式で自動更新。", ""),
         ("5. 設定シート", "h"),
         ("年度（生徒の高3の年度）・各期間の終了日・標準パターン（系統ごとの受験科目の✓）を管理します。", ""),
         ("6. マスタ（志望校・教材・講座・カリキュラムDB・共テDB）", "h"),

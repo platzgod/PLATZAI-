@@ -41,13 +41,14 @@ done:
 End Sub
 
 ' ボタン：成績表を印刷
-' 使っていない科目・模試・教材の行を隠してから、成績表の印刷プレビューを開く
+' 使っていない科目・模試・教材の行を隠してから、成績表と成績グラフ（2枚）の印刷プレビューを開く
 Public Sub PrintReport()
     Dim ws As Worksheet
     PrepareReport
     Set ws = ThisWorkbook.Worksheets("成績表")
     ws.Activate
-    ws.PrintPreview
+    ThisWorkbook.Worksheets(Array("成績表", "成績グラフ")).PrintPreview   ' 1枚目：レポート、2枚目：グラフ
+    ws.Select
 End Sub
 
 Public Sub PrepareReport()
