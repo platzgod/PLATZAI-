@@ -11,6 +11,7 @@ import openpyxl  # noqa: E402
 
 import build as B  # noqa: E402
 import data as D  # noqa: E402
+import handout as H  # noqa: E402
 from lo_harness import Office  # noqa: E402
 
 CASES = [
@@ -57,7 +58,14 @@ def expected(case):
                 cells[(r, c)] = str(v)
     merges = {str(m) for m in ws.merged_cells.ranges}
     mats = [m[1] for m in B.materials_for(ws, subjects)]
-    return j, checks, subjects, cells, merges, mats
+    ho = wb.create_sheet("ho")
+    last = H.write_rows(ho, H.handout_rows(ws, subjects, B.FIRST, B.BLOCK, B.COL_KY), H.summary_text(j, checks),
+                        dict(D.SUBJECTS))
+    hcells = {(r, c): str(ho.cell(r, c).value) for r in range(H.H_FIRST, last + 4) for c in range(1, H.LASTC + 1)
+              if ho.cell(r, c).value not in (None, "") and not str(ho.cell(r, c).value).startswith("=")}
+    hcells[(3, 1)] = ho["A3"].value
+    hmerges = {str(m) for m in ho.merged_cells.ranges if m.min_row >= H.H_FIRST}
+    return j, checks, subjects, cells, merges, mats, (hcells, hmerges, last)
 
 
 def main(path):
@@ -75,7 +83,7 @@ def main(path):
             off.set(doc, B.INPUT, "B14", case["bunri"])
             off.set(doc, B.INPUT, "B16", case.get("level_manual") or "")
             doc.calculateAll()
-            j, checks, subjects, cells, merges, mats = expected(case)
+            j, checks, subjects, cells, merges, mats, hexp = expected(case)
             if case["checks"] is None:
                 off.run(doc, "modCurriculum.SetStandardChecks")
             else:
@@ -132,11 +140,37 @@ def main(path):
             gmats = [x for x in gmats if x]
             if gmats != mats:
                 errs.append(f"教材 {gmats} != {mats}")
+            # 配布用カリキュラム
+            hcells, hmerges, hlast = hexp
+            ho = off.sheet(doc, H.SHEET)
+            gh = {}
+            for r in range(H.H_FIRST, hlast + 4):
+                for c in range(1, H.LASTC + 1):
+                    v = ho.getCellByPosition(c - 1, r - 1)
+                    if v.String and not v.getFormula().startswith("="):
+                        gh[(r, c)] = v.String
+            gh[(3, 1)] = ho.getCellByPosition(0, 2).String
+            if gh != hcells:
+                diff = [(k, gh.get(k), hcells.get(k)) for k in sorted(set(gh) | set(hcells)) if gh.get(k) != hcells.get(k)]
+                errs.append(f"配布用のセルが {len(diff)} 個ちがう: {diff[:4]}")
+            ghm = set()
+            for r in range(H.H_FIRST, hlast + 4):
+                c = 1
+                while c <= H.LASTC:
+                    cur = ho.createCursorByRange(ho.getCellByPosition(c - 1, r - 1))
+                    cur.collapseToMergedArea()
+                    a = cur.getRangeAddress()
+                    if (a.EndColumn > a.StartColumn or a.EndRow > a.StartRow) and a.StartRow == r - 1 and a.StartColumn == c - 1:
+                        ghm.add(f"{openpyxl.utils.get_column_letter(a.StartColumn + 1)}{a.StartRow + 1}:"
+                                f"{openpyxl.utils.get_column_letter(a.EndColumn + 1)}{a.EndRow + 1}")
+                    c += 1
+            if ghm != hmerges:
+                errs.append(f"配布用の結合ちがい: VBAのみ {sorted(ghm - hmerges)[:4]} / Pythonのみ {sorted(hmerges - ghm)[:4]}")
             # 非表示行（科目を反映）
             hidden = [r for r in range(B.FIRST, B.LAST + 1) if not plan.getRows().getByIndex(r - 1).IsVisible]
             status = "OK" if not errs else "NG"
             fails += bool(errs)
-            print(f"[{status}] {case['name']}: {j['system']} {j['pre']}  セル{len(got)} 結合{len(gm)} 非表示行{len(hidden)} 教材{len(gmats)}")
+            print(f"[{status}] {case['name']}: {j['system']} {j['pre']}  配布用{hlast - H.H_FIRST + 1}行  セル{len(got)} 結合{len(gm)} 非表示行{len(hidden)} 教材{len(gmats)}")
             for e in errs:
                 print("    ", e)
         # ダブルクリックの代わりに、☑ を付けて進捗の数式を確認

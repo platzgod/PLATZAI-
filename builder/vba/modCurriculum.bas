@@ -154,6 +154,8 @@ Public Sub BuildCurriculum()
     Application.EnableEvents = prevEvents
     gStep = "科目を反映"
     ApplySubjects
+    gStep = "配布用"
+    MakeHandout
     gBusy = False
     Exit Sub
 fail:

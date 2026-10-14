@@ -24,6 +24,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import data as D  # noqa: E402
+import handout as H  # noqa: E402
 from package import make_xlsm  # noqa: E402
 from vbaproject import build_vba_project  # noqa: E402
 
@@ -264,6 +265,7 @@ def build(src_path, out_path, sample=None):
     ws_how = wb.create_sheet("使い方")
     ws_in = wb.create_sheet(INPUT)
     ws_plan = wb.create_sheet(PLAN)
+    ws_ho = wb.create_sheet(H.SHEET)
     ws_mock = wb.create_sheet("模試・自学")
     ws_rep = wb.create_sheet("成績表")
     ws_set = wb.create_sheet("設定")
@@ -272,7 +274,7 @@ def build(src_path, out_path, sample=None):
     ws_course = wb.create_sheet("講座マスタ")
     ws_db = wb.create_sheet("カリキュラムDB")
     ws_ky = wb.create_sheet("共テDB")
-    codenames = {ws_how: "shHowTo", ws_in: "shInput", ws_plan: "shPlan", ws_mock: "shMock", ws_rep: "shReport",
+    codenames = {ws_how: "shHowTo", ws_in: "shInput", ws_plan: "shPlan", ws_ho: "shHandout", ws_mock: "shMock", ws_rep: "shReport",
                  ws_set: "shSetting", ws_univ: "shUniv", ws_mat: "shMaterial", ws_course: "shCourse",
                  ws_db: "shDB", ws_ky: "shKyote"}
     for ws, cn in codenames.items():
@@ -303,6 +305,9 @@ def build(src_path, out_path, sample=None):
     subjects = subjects_from_checks(checks)
     db_index = {(r[0], r[1], r[2], r[3]): r[4] for r in D.build_db()}
     reflect(ws_plan, j, checks, subjects, db_index, sample["school1"] or "志望校")
+    H.build_static(ws_ho)
+    H.write_rows(ws_ho, H.handout_rows(ws_plan, subjects, FIRST, BLOCK, COL_KY), H.summary_text(j, checks),
+                 dict(D.SUBJECTS))
     mats = materials_for(ws_plan, subjects)
     for i, m in enumerate(mats):
         r = MAT_FIRST + i
@@ -339,15 +344,17 @@ def build(src_path, out_path, sample=None):
     for ws, cn in codenames.items():
         code = {"shPlan": rd("shPlan.cls"), "shInput": rd("shInput.cls")}.get(cn, "Option Explicit\n")
         modules.append((cn, "sheet", code))
-    modules += [("modCurriculum", "std", rd("modCurriculum.bas")), ("modReport", "std", rd("modReport.bas"))]
+    modules += [("modCurriculum", "std", rd("modCurriculum.bas")), ("modReport", "std", rd("modReport.bas")),
+                ("modHandout", "std", rd("modHandout.bas"))]
     vba = build_vba_project(os.path.join(HERE, "vba_template.bin"), modules)
 
     btn = dict(fill=NAVY)
     buttons = {
         INPUT: [
             dict(col=5, row=3, col2=8, row2=6, text="カリキュラムに反映", macro="ApplyRecommended", size=1200, **btn),
-            dict(col=5, row=7, col2=8, row2=9, text="成績表を印刷", macro="PrintReport", fill="3462B0"),
-            dict(col=5, row=10, col2=8, row2=12, text="管理表（A3）を印刷", macro="PrintPlan", fill="3462B0"),
+            dict(col=5, row=7, col2=8, row2=9, text="配布用カリキュラムを印刷", macro="PrintHandout", fill="5CAC4A", size=1000),
+            dict(col=5, row=10, col2=8, row2=12, text="成績表を印刷", macro="PrintReport", fill="3462B0"),
+            dict(col=5, row=13, col2=8, row2=15, text="管理表（A3）を印刷", macro="PrintPlan", fill="3462B0"),
             dict(col=5, row=CHK_FIRST - 1, col2=8, row2=CHK_FIRST + 2, text="標準パターンでチェック", macro="SetStandardChecks",
                  fill="E88A12", size=1000),
             dict(col=5, row=CHK_FIRST + 3, col2=8, row2=CHK_FIRST + 5, text="チェックを全部外す", macro="ClearChecks",
@@ -356,6 +363,7 @@ def build(src_path, out_path, sample=None):
         PLAN: [
             dict(col=27, row=0, col2=30, row2=3, text="成績表を印刷", macro="PrintReport", **btn),
             dict(col=27, row=6, col2=30, row2=8, text="科目を反映", macro="ApplySubjects", fill="3462B0"),
+            dict(col=27, row=17, col2=30, row2=20, text="配布用を印刷", macro="PrintHandout", fill="5CAC4A"),
             dict(col=27, row=12, col2=30, row2=15, text="カリキュラムに反映", macro="ApplyRecommended", fill="E88A12", size=1000),
         ],
         "設定": [dict(col=7, row=11, col2=10, row2=13, text="科目を反映", macro="ApplySubjects", **btn)],
@@ -603,7 +611,7 @@ def build_input(ws, name, s, checks):
                         error="偏差値は 20〜85 の数で入力してください", showErrorMessage=True)
     ws.add_data_validation(dv)
     dv.add("B15")
-    for r, t in ((14, "← ボタン：管理表をいまの内容で作り直します"), (15, "（チェック済み☑があるときは確認が出ます）")):
+    for r, t in ((16, "↑ 反映：管理表と配布用カリキュラムを作り直します"), (17, "（チェック済み☑があるときは確認が出ます）")):
         ws.cell(r, 6, t).font = font(8, color=GRAY)
     ws.freeze_panes = "A4"
     ws.page_setup.orientation = "portrait"
