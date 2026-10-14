@@ -3,10 +3,11 @@
 使い方:
     python tools/make_docx.py <添削結果.json> <出力先.docx>
 
-仕上がり: A3 横・3 列の表
+仕上がり: A3 横。タイトル・生徒情報・総合評価（A〜E）の下に 3 列の表
     1. 原文（下線＝書き直す箇所）
     2. 番号ごとの直し方（〔 〕は自分の言葉で埋める）
-    3. 修正後の文章（丸数字は直した箇所）＋段落の入れ替え・提出前の確認・アドミッションポリシー
+    3. 修正後の文章（丸数字は直した箇所）＋段落の入れ替え・提出前の確認・
+       アドミッションポリシー・文字起こしの確認
 
 JSON の形式は tools/sample_result.json を参照。
 - 指摘箇所は corrections[].target（原文中の文字列そのまま）で指定する。
@@ -37,6 +38,13 @@ GRAY = RGBColor(0x59, 0x59, 0x59)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 COL_WIDTHS = (6700, 7700, 7720)  # twips。A3 横の本文幅いっぱい
 MARKER = re.compile(r"\[\[([^\[\]]+)\]\]")
+RANKS = {
+    "A": "合格水準・完成度が高い",
+    "B": "合格圏・細部の改善で仕上がる",
+    "C": "要改善・構成か論証に課題",
+    "D": "大幅な書き直しが必要",
+    "E": "設問に答えていない・未完成",
+}
 
 
 def circled(n):
@@ -259,8 +267,20 @@ def build(data, out_path):
     info = f"{data.get('student') or '生徒名不明'}　｜　{school}"
     if data.get("prompt"):
         info += f"　｜　設問：{data['prompt']}"
-    p = para(doc, after=120, align=WD_ALIGN_PARAGRAPH.CENTER)
+    p = para(doc, after=80, align=WD_ALIGN_PARAGRAPH.CENTER)
     run(p, info, font=GOTHIC, size=10, color=GRAY)
+
+    # 総合評価
+    overall = data.get("overall")
+    if overall:
+        rank = overall["rank"]
+        if rank not in RANKS:
+            sys.exit(f"エラー: 総合評価「{rank}」は {'・'.join(RANKS)} のいずれかにしてください。")
+        p = para(doc, after=120)
+        run(p, "総合評価　", font=GOTHIC, size=12, bold=True, color=NAVY)
+        run(p, rank, font=GOTHIC, size=16, bold=True, color=RED)
+        run(p, f"（{RANKS[rank]}）　", font=GOTHIC, size=9, color=GRAY)
+        run(p, resolve(overall.get("comment"), ids), size=10.5)
 
     # 3 列の表
     table = doc.add_table(rows=2, cols=3)
@@ -292,10 +312,18 @@ def build(data, out_path):
 
     section(right, "【段落の入れ替え】", [resolve(x, ids) for x in data.get("reorder", [])])
     checks = [resolve(x, ids) for x in data.get("checklist", [])]
-    checks.append(
-        f"文字数の目安：原文 約{char_count(original)}字 → 修正後 約{char_count(revised)}字"
-        "（番号記号を除く、〔 〕を含む）。字数制限に合わせて調整する。"
-    )
+    before, after = char_count(original), char_count(revised)
+    limit = data.get("char_limit")
+    if limit:
+        checks.append(
+            f"字数：制限 {limit}字 → 原文 約{before}字（{before * 100 // limit}%）→ 修正後 約{after}字"
+            f"（{after * 100 // limit}%）。番号記号と空白を除き、〔 〕を含む。"
+        )
+    else:
+        checks.append(
+            f"文字数の目安：原文 約{before}字 → 修正後 約{after}字"
+            "（番号記号と空白を除く、〔 〕を含む）。字数制限に合わせて調整する。"
+        )
     section(right, "【提出前の確認】", checks)
 
     policy = data.get("admission_policy") or {}
@@ -306,6 +334,7 @@ def build(data, out_path):
     if not policy:
         ap_lines = ["志望校が特定できなかったため、固定基準のみで添削した。"]
     section(right, "【参照したアドミッションポリシー】", ap_lines)
+    section(right, "【文字起こしの確認】", [resolve(x, ids) for x in data.get("transcription_notes", [])])
 
     for cell in (left, middle, right):
         clear_cell(cell)

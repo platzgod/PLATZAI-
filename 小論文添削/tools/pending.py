@@ -1,28 +1,46 @@
-"""添削前フォルダの未処理ファイルを一覧し、PDF / Word は本文を抽出する。
+"""添削前フォルダの未処理の提出物を一覧し、PDF / Word は本文を抽出する。
 
 使い方:
     python tools/pending.py [添削前フォルダ] [添削後フォルダ]
     （省略時はこのスクリプトの親フォルダ直下の「添削前」「添削後」）
 
-出力は JSON。各ファイルについて
-  - student / university / faculty : ファイル名から読み取った値（形式が違えば null）
-  - output : 保存先の .docx パス
-  - text   : 抽出した本文（画像は null。Claude が画像を直接読んで文字起こしする）
-  - status : "pending" / "skipped"（処理済み）/ "needs_vision"（画像）/ "empty"（文字が取れない）
+提出物の置き方（1 人分 = 1 フォルダ、または 1 ファイル）:
+    添削前/小論文_田中太郎_早稲田大学_法学部/
+        設問.jpg        … ファイル名に「設問」を含むものは設問・資料として扱う
+        1.jpg, 2.jpg    … それ以外は本文。名前の順（1, 2, …10）に並べる
+    添削前/志願理由書_田中太郎_早稲田大学_法学部.docx   … 1 ファイルの場合（設問も同じファイルに含める）
+
+出力は JSON。提出物ごとに
+  - doc_type / student / university / faculty : 名前から読み取った値（読み取れなければ null）
+  - output   : 保存先の .docx パス
+  - prompt_files / body_files : 各ファイルの path と text。
+        text が null のファイル（画像、文字が取れない PDF）は Claude が Read ツールで直接読む。
+  - status   : "pending" / "skipped"（処理済み）/ "error"
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
-TARGET_EXTS = {".pdf", ".jpg", ".jpeg", ".docx"}
+TARGET_EXTS = {".pdf", ".jpg", ".jpeg", ".png", ".heic", ".docx"}
+DOC_TYPES = ("小論文", "志願理由書")
 
 
 def parse_name(stem):
     parts = stem.split("_")
+    info = {"doc_type": None, "student": None, "university": None, "faculty": None}
+    if parts and parts[0] in DOC_TYPES:
+        info["doc_type"] = parts.pop(0)
     if len(parts) == 3 and all(parts):
-        return parts
-    return None, None, None
+        info["student"], info["university"], info["faculty"] = parts
+    elif parts and parts[0]:
+        info["student"] = parts[0]
+    return info
+
+
+def natural_key(path):
+    return [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", path.name)]
 
 
 def extract_text(path):
@@ -31,12 +49,24 @@ def extract_text(path):
         import pdfplumber
 
         with pdfplumber.open(path) as pdf:
-            return "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
-    if ext == ".docx":
+            text = "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
+    elif ext == ".docx":
         from docx import Document
 
-        return "\n".join(p.text for p in Document(path).paragraphs).strip()
-    return None
+        text = "\n".join(p.text for p in Document(path).paragraphs).strip()
+    else:
+        return None  # 画像は Claude が直接読む
+    return text or None
+
+
+def describe(path):
+    item = {"path": str(path)}
+    try:
+        item["text"] = extract_text(path)
+    except Exception as e:  # 壊れたファイルなどは報告に回す
+        item["text"] = None
+        item["error"] = str(e)
+    return item
 
 
 def main():
@@ -46,30 +76,35 @@ def main():
     dst.mkdir(parents=True, exist_ok=True)
 
     results = []
-    for path in sorted(src.iterdir()):
-        if not path.is_file() or path.suffix.lower() not in TARGET_EXTS or path.name.startswith("~$"):
+    for entry in sorted(src.iterdir(), key=natural_key):
+        if entry.name.startswith(("~$", ".")):
             continue
-        student, university, faculty = parse_name(path.stem)
-        output = dst / f"{path.stem}_添削完了.docx"
-        item = {
-            "file": str(path),
-            "student": student,
-            "university": university,
-            "faculty": faculty,
-            "output": str(output),
-            "text": None,
-        }
+        if entry.is_dir():
+            files = sorted(
+                (f for f in entry.iterdir()
+                 if f.is_file() and f.suffix.lower() in TARGET_EXTS and not f.name.startswith(("~$", "."))),
+                key=natural_key,
+            )
+            name = entry.name
+        elif entry.suffix.lower() in TARGET_EXTS:
+            files = [entry]
+            name = entry.stem
+        else:
+            continue
+
+        output = dst / f"{name}_添削完了.docx"
+        item = {"submission": str(entry), **parse_name(name), "output": str(output)}
         if output.exists():
             item["status"] = "skipped"
-        elif path.suffix.lower() in {".jpg", ".jpeg"}:
-            item["status"] = "needs_vision"
+        elif not files:
+            item["status"] = "error"
+            item["error"] = "フォルダに対象ファイルがありません"
         else:
-            try:
-                item["text"] = extract_text(path)
-                item["status"] = "pending" if item["text"] else "empty"
-            except Exception as e:  # 壊れたファイルなどは報告に回す
-                item["status"] = "error"
-                item["error"] = str(e)
+            prompts = [f for f in files if "設問" in f.stem]
+            bodies = [f for f in files if f not in prompts]
+            item["prompt_files"] = [describe(f) for f in prompts]
+            item["body_files"] = [describe(f) for f in bodies]
+            item["status"] = "pending"
         results.append(item)
 
     print(json.dumps(results, ensure_ascii=False, indent=2))
