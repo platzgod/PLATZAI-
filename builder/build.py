@@ -907,7 +907,7 @@ def add_block_cf(ws, r0, color):
 
 # ============================================================ 模試・自学
 def build_mock(ws, old):
-    rmap = lambda r: r if r <= 27 else r + 2  # noqa: E731
+    rmap = lambda r: r if r <= 27 else None  # noqa: E731  （元の③講師コメント・④次回目標の欄は削除）
     copy_sheet(old, ws, rmap=rmap, keep_value=lambda r, c: not (20 <= r <= 27) and c != 10 and not (r in (5, 14, 15)))
     for r in (28, 29):     # 教材行を2行追加
         ws.merge_cells(f"F{r}:H{r}")
@@ -930,11 +930,9 @@ def build_mock(ws, old):
         ws[f"{col}14"] = f'=IFERROR(LOOKUP(2,1/({col}$6:{col}$13<>""),{col}$6:{col}$13),"")'
         ws[f"{col}15"] = f'=IF(OR({col}14="",{col}5=""),"",{col}14-{col}5)'
     ws["A18"] = "② 家庭学習推奨教材（全教科）　※ おすすめカリキュラムの反映で自動入力。『現在（周）』を毎回入力"
-    ws["A32"] = "③ 講師メモ（成績表には載りません）"
-    ws["A39"] = "④ 次回までの目標（メモ・成績表には載りません）"
     ws["A2"] = "※ 目標（志望校）の総合はデータシート（志望校マスタ）から自動で入ります。教科別の目標は手入力"
     ws["A2"].font = font(8, color=GRAY)
-    ws.print_area = "A1:J42"
+    ws.print_area = "A1:J30"
     ws.page_setup.orientation, ws.page_setup.paperSize = "portrait", 9
     ws.sheet_properties.pageSetUpPr.fitToPage = True
     ws.page_setup.fitToWidth, ws.page_setup.fitToHeight = 1, 1
@@ -1023,7 +1021,7 @@ def build_howto(ws):
         ("2-2. 配布用カリキュラム（生徒に渡す・A3横）", "h"),
         ("管理表からチェック欄・進捗・空欄を除いて自動で作られます（反映のたびに更新）。共通テスト講座は各科目の9〜12月に入ります。『配布用を印刷』ボタンで印刷。", ""),
         ("3. 模試・自学シート", "h"),
-        ("模試の偏差値を古い順に入力。② の家庭学習推奨教材は反映時に自動で並ぶので、『現在（周）』だけ毎回入力。③④は講師用のメモ欄（成績表には載りません）。", ""),
+        ("模試の偏差値を古い順に入力。② の家庭学習推奨教材は反映時に自動で並ぶので、『現在（周）』だけ毎回入力。", ""),
         ("4. 成績表（A4縦）", "h"),
         ("A4縦1枚：①志望校までの達成度（ドーナツ）②講座の受講状況（科目別）③模試の偏差値の推移（折れ線＋目標・最新・差）④家庭学習推奨教材。", ""),
         ("『成績表を印刷』ボタンで、使っていない科目・教材の行を隠して印刷プレビューを開きます。総合達成度＝講座の受講・模試・家庭学習教材の平均。", ""),
