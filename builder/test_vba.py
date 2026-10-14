@@ -14,28 +14,41 @@ import data as D  # noqa: E402
 from lo_harness import Office  # noqa: E402
 
 CASES = [
-    dict(name="国立理系・基礎→標準", school1="群馬大学", bunri="理系", current=45, social1="地理", social2="なし",
-         science="物理・化学", kyote_use="しない"),
-    dict(name="私大文系・標準", school1="明治大学", bunri="文系", current=52.5, social1="世界史", social2="なし",
-         science="化学基礎・生物基礎", kyote_use="しない"),
-    dict(name="私大理系・共テ利用", school1="東京理科大学", bunri="理系", current=58, social1="地理", social2="なし",
-         science="化学・生物", kyote_use="する"),
-    dict(name="国立文系・倫理", school1="千葉大学", bunri="文系", current=48, social1="地理", social2="公共・倫理",
-         science="物理基礎・化学基礎", kyote_use="しない"),
-    dict(name="私大文系・数学", school1="早稲田大学", bunri="文系", current=66, social1="数学", social2="なし",
-         science="化学基礎・生物基礎", kyote_use="しない"),
+    # checks=None → 「標準パターンでチェック」ボタン（SetStandardChecks）で入れる
+    dict(name="国立理系・標準パターン", school1="群馬大学", bunri="理系", checks=None),
+    dict(name="私大文系・世界史", school1="明治大学", bunri="文系",
+         checks=dict(ko=["英語", "現代文", "古文", "世界史"], ky=[])),
+    dict(name="私大理系・共テ利用", school1="東京理科大学", bunri="理系",
+         checks=dict(ko=["英語", "数学", "化学", "生物"], ky=["英語", "数学", "化学", "生物"])),
+    dict(name="国立文系・地理・倫理", school1="千葉大学", bunri="文系",
+         checks=dict(ko=["英語", "数学", "現代文", "古文", "漢文", "地理"],
+                     ky=["英語", "数学", "現代文", "古文", "漢文", "地理", "物理基礎", "化学基礎", "公共・倫理", "情報Ⅰ"])),
+    dict(name="私大文系・数学・レベル手動", school1="早稲田大学", bunri="文系", level_manual="標準",
+         checks=dict(ko=["英語", "数学", "現代文", "古文"], ky=[])),
+    dict(name="国立文系・標準パターン", school1="一橋大学", bunri="文系", checks=None),
+    dict(name="全項目チェック（DBにない組み合わせを含む）", school1="群馬大学", bunri="理系",
+         checks=dict(ko=list(D.ITEM_NAMES), ky=list(D.ITEM_NAMES))),
+    dict(name="チェックなし", school1="", bunri="文系", checks=dict(ko=[], ky=[])),
 ]
 
 
+def case_checks(case, system):
+    if case["checks"] is None:
+        return B.standard_checks(system)
+    ko, ky = case["checks"]["ko"], case["checks"]["ky"]
+    return {it: (it in ko, it in ky) for it in D.ITEM_NAMES}
+
+
 def expected(case):
-    univ = {u[0]: (u[1], u[2], u[3]) for u in D.UNIVERSITIES}
-    inp = dict(case, target_manual=None)
+    univ = B.univ_table()
+    inp = dict(case)
     j = B.judge(inp, univ)
-    subjects = B.recommend_subjects(j, inp)
+    checks = case_checks(case, j["system"])
+    subjects = B.subjects_from_checks(checks)
     wb = openpyxl.Workbook()
     ws = wb.active
     db_index = {(r[0], r[1], r[2], r[3]): r[4] for r in D.build_db()}
-    B.reflect(ws, j, inp, subjects, db_index, inp["school1"])
+    B.reflect(ws, j, checks, subjects, db_index, inp["school1"])
     cells = {}
     for r in range(B.FIRST, B.LAST + 1):
         for c in list(range(2, 2 + B.NPER)) + [B.COL_KY] + list(B.KY_COLS):
@@ -44,35 +57,48 @@ def expected(case):
                 cells[(r, c)] = str(v)
     merges = {str(m) for m in ws.merged_cells.ranges}
     mats = [m[1] for m in B.materials_for(ws, subjects)]
-    return j, subjects, cells, merges, mats
+    return j, checks, subjects, cells, merges, mats
 
 
 def main(path):
     fails = 0
     with Office() as off:
         doc = off.open(path)
-        sh = off.sheet(doc, "生徒情報")
+        sh = off.sheet(doc, B.INPUT)
         plan = off.sheet(doc, B.PLAN)
         mock = off.sheet(doc, "模試・自学")
         sett = off.sheet(doc, "設定")
-        # 0) 初期状態のまま反映しても、Python が作った初期表示と同じになるか
+        nm = lambda n: doc.NamedRanges.getByName(n).getReferredCells()  # noqa: E731
         for case in CASES:
-            off.set(doc, "生徒情報", "B21", "しない")  # 自動反映を切ってから入力（イベントの影響を避ける）
-            for ref, key in (("B11", "school1"), ("B14", "bunri"), ("B15", "current"), ("B17", "social1"),
-                             ("B18", "social2"), ("B19", "science"), ("B20", "kyote_use")):
-                off.set(doc, "生徒情報", ref, case[key])
+            off.set(doc, B.INPUT, "B17", "しない")  # 自動反映を切ってから入力（イベントの影響を避ける）
+            off.set(doc, B.INPUT, "B11", case["school1"])
+            off.set(doc, B.INPUT, "B14", case["bunri"])
+            off.set(doc, B.INPUT, "B16", case.get("level_manual") or "")
+            doc.calculateAll()
+            j, checks, subjects, cells, merges, mats = expected(case)
+            if case["checks"] is None:
+                off.run(doc, "modCurriculum.SetStandardChecks")
+            else:
+                chk = nm("kChecks")
+                for i, it in enumerate(D.ITEM_NAMES):
+                    chk.getCellByPosition(0, i).String = "✓" if checks[it][0] else ""
+                    chk.getCellByPosition(1, i).String = "✓" if checks[it][1] else ""
             doc.calculateAll()
             off.run(doc, "modCurriculum.ApplyRecommendedSilent")
             le = off.run(doc, "modCurriculum.LastError")[0]
             if le:
                 print("    VBAエラー:", le)
             doc.calculateAll()
-            j, subjects, cells, merges, mats = expected(case)
-            got_sys = sh.getCellRangeByName("B25").String
-            got_pre, got_post = sh.getCellRangeByName("B28").String, sh.getCellRangeByName("B29").String
+            got_sys = nm("kSystem").getCellByPosition(0, 0).String
+            got_lv = nm("kLevel").getCellByPosition(0, 0).String
             errs = []
-            if (got_sys, got_pre, got_post) != (j["system"], j["pre"], j["post"]):
-                errs.append(f"判定 {got_sys},{got_pre},{got_post} != {j['system']},{j['pre']},{j['post']}")
+            if (got_sys, got_lv) != (j["system"], j["pre"]):
+                errs.append(f"判定 {got_sys},{got_lv} != {j['system']},{j['pre']}")
+            chk = nm("kChecks")
+            gchk = {it: (chk.getCellByPosition(0, i).String == "✓", chk.getCellByPosition(1, i).String == "✓")
+                    for i, it in enumerate(D.ITEM_NAMES)}
+            if gchk != checks:
+                errs.append("チェックちがい: " + str([it for it in D.ITEM_NAMES if gchk[it] != checks[it]]))
             for i, subj in enumerate(D.SUBJECT_NAMES):
                 g = (sett.getCellByPosition(1, B.SET_FIRST + i - 1).String, sett.getCellByPosition(2, B.SET_FIRST + i - 1).String)
                 if g != subjects[subj]:
@@ -110,7 +136,7 @@ def main(path):
             hidden = [r for r in range(B.FIRST, B.LAST + 1) if not plan.getRows().getByIndex(r - 1).IsVisible]
             status = "OK" if not errs else "NG"
             fails += bool(errs)
-            print(f"[{status}] {case['name']}: {j['system']} 前期{j['pre']} 後期{j['post']}  セル{len(got)} 結合{len(gm)} 非表示行{len(hidden)} 教材{len(gmats)}")
+            print(f"[{status}] {case['name']}: {j['system']} {j['pre']}  セル{len(got)} 結合{len(gm)} 非表示行{len(hidden)} 教材{len(gmats)}")
             for e in errs:
                 print("    ", e)
         # ダブルクリックの代わりに、☑ を付けて進捗の数式を確認

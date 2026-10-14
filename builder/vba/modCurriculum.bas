@@ -2,7 +2,7 @@ Option Explicit
 
 ' ============================================================================
 '  おすすめカリキュラムの自動反映
-'   生徒情報シートの「系統」「前期レベル」「後期レベル」（数式で自動判定）をもとに、
+'   データシートの「系統」「レベル」（数式で自動判定）と受験科目のチェックをもとに、
 '   カリキュラムDB / 共テDB / 教材マスタから管理表・模試自学シートへ書き込む。
 '   前期 = 高2の1月〜夏期Ⅱ期（17期間のうち 1〜11 列目）、後期 = 9月〜直前Ⅱ期（12〜17 列目）
 ' ============================================================================
@@ -23,20 +23,20 @@ Public Const MAT_COUNT As Long = 10
 Public gBusy As Boolean
 Public gSilent As Boolean
 Public gLastError As String
+Public gStep As String
 
 ' --- ボタン：おすすめカリキュラムを反映
 Public Sub ApplyRecommended()
     If HasChecks() Then
         If MsgBox("管理表にチェック済み（" & ChrW(&H2611) & "）の記録があります。" & vbLf & _
-                  "おすすめカリキュラムを反映すると、講座・教材とチェックが入れ替わります。続けますか？", _
-                  vbYesNo + vbExclamation, "おすすめカリキュラムを反映") <> vbYes Then Exit Sub
+                  "反映すると、講座・教材とチェックが入れ替わります。続けますか？", _
+                  vbYesNo + vbExclamation, "カリキュラムに反映") <> vbYes Then Exit Sub
     End If
     BuildCurriculum
     If gLastError <> "" Then Exit Sub
-    MsgBox "おすすめカリキュラムを反映しました。" & vbLf & vbLf & _
+    MsgBox "カリキュラムに反映しました。" & vbLf & vbLf & _
            "系統：" & NV("kSystem") & vbLf & _
-           "前期（高2の1月〜夏期）：" & NV("kPreLevel") & "レベル" & vbLf & _
-           "後期（9月〜直前）：" & NV("kPostLevel") & "レベル", vbInformation, "おすすめカリキュラムを反映"
+           "レベル：" & NV("kLevel"), vbInformation, "カリキュラムに反映"
 End Sub
 
 ' --- 確認なしで反映（生徒情報の入力変更時・テスト用）
@@ -55,14 +55,34 @@ End Function
 Public Sub AutoApply()
     If gBusy Then Exit Sub
     If HasChecks() Then
-        If MsgBox("志望校・偏差値などが変わりました。おすすめカリキュラムを反映し直しますか？" & vbLf & _
+        If MsgBox("志望校・受験科目などが変わりました。カリキュラムに反映し直しますか？" & vbLf & _
                   "（チェック済み（" & ChrW(&H2611) & "）の記録は消えます。『いいえ』なら今の管理表のままです）", _
-                  vbYesNo + vbQuestion, "おすすめカリキュラム") <> vbYes Then Exit Sub
+                  vbYesNo + vbQuestion, "カリキュラムに反映") <> vbYes Then Exit Sub
     End If
     BuildCurriculum
 End Sub
 
-' --- 名前の定義（生徒情報シートの判定セルなど）の値
+' --- 1列の範囲 rng の中で key と一致する行番号（範囲内の何行目か）。なければ 0
+'     （Application.Match は見つからないときの動きが環境で違うため、自前で探す）
+Public Function FindRow(ByVal rng As Range, ByVal key As String) As Long
+    Dim n As Long, i As Long, v As Variant
+    n = Application.WorksheetFunction.CountA(rng)
+    If n = 0 Then Exit Function
+    If rng.Rows.Count > n + 1 Then Set rng = rng.Resize(n + 1, 1)
+    v = rng.Value
+    If Not IsArray(v) Then
+        If CStr(v) = key Then FindRow = 1
+        Exit Function
+    End If
+    For i = 1 To UBound(v, 1)
+        If CStr(v(i, 1)) = key Then
+            FindRow = i
+            Exit Function
+        End If
+    Next i
+End Function
+
+' --- 名前の定義（データシートの判定セルなど）の値
 Public Function NV(ByVal nm As String) As String
     NV = CStr(ThisWorkbook.Names(nm).RefersToRange.Value)
 End Function
@@ -102,11 +122,7 @@ Public Sub BuildCurriculum()
     school = NV("kSchool")
     lastRow = FIRST_ROW + NSUB * BLOCK - 1
 
-    ' 1) 受験科目（○）を、設定シートのおすすめ列からコピー
-    For s = 0 To NSUB - 1
-        st.Cells(SET_FIRST + s, 2).Value = st.Cells(SET_FIRST + s, 5).Value
-        st.Cells(SET_FIRST + s, 3).Value = st.Cells(SET_FIRST + s, 6).Value
-    Next s
+    ' 1) 受験科目（○）は設定シートの数式がデータシートのチェックから自動で付ける
 
     ' 2) 管理表をクリア
     With ws.Range(ws.Cells(FIRST_ROW, 2), ws.Cells(lastRow, 1 + NPER))
@@ -120,6 +136,7 @@ Public Sub BuildCurriculum()
     For s = 0 To NSUB - 1
         subj = CStr(st.Cells(SET_FIRST + s, 1).Value)
         r = FIRST_ROW + s * BLOCK
+        gStep = subj
         If st.Cells(SET_FIRST + s, 2).Value = "○" Then
             WriteBand ws, db, r, sysName & "|" & subj, preLv, postLv, "講座", school, False
             WriteBand ws, db, r + 1, sysName & "|" & subj, preLv, postLv, "回", school, False
@@ -130,35 +147,37 @@ Public Sub BuildCurriculum()
     Next s
 
     ' 4) 模試・自学シートの家庭学習教材リスト
+    gStep = "教材リスト"
     FillMaterials
 
     Application.DisplayAlerts = True
     Application.EnableEvents = prevEvents
+    gStep = "科目を反映"
     ApplySubjects
     gBusy = False
     Exit Sub
 fail:
-    gLastError = "BuildCurriculum: " & Err.Number & " " & Err.Description
+    gLastError = "BuildCurriculum（" & gStep & "）: " & Err.Number & " " & Err.Description
     Application.DisplayAlerts = True
     Application.EnableEvents = True
     Application.ScreenUpdating = True
     gBusy = False
-    If Not gSilent Then MsgBox "反映中にエラーが起きました。" & vbLf & gLastError, vbExclamation, "おすすめカリキュラム"
+    If Not gSilent Then MsgBox "反映中にエラーが起きました。" & vbLf & gLastError, vbExclamation, "カリキュラムに反映"
 End Sub
 
 ' 1行分（17期間）を前期・後期の2つのパターンから組み立てて書き込む
 '   withChecks = True なら、教材の帯の下の行に未チェックの印を置く
 Private Sub WriteBand(ws As Worksheet, db As Worksheet, r As Long, keyBase As String, _
                       preLv As String, postLv As String, kind As String, school As String, withChecks As Boolean)
-    Dim vals(1 To 17) As String, c As Long, m As Variant, lv As String, v As String
+    Dim vals(1 To 17) As String, c As Long, m As Long, lv As String, v As String
     Dim startC As Long, endC As Long, k As Long
 
     For c = 1 To NPER
         If c <= SPLIT_AT Then lv = preLv Else lv = postLv
         If c = 1 Or c = SPLIT_AT + 1 Then
-            m = Application.Match(keyBase & "|" & lv & "|" & kind, db.Columns(1), 0)
+            m = FindRow(db.Columns(1), keyBase & "|" & lv & "|" & kind)
         End If
-        If IsError(m) Then
+        If m = 0 Then
             vals(c) = ""
         Else
             vals(c) = CStr(db.Cells(m, 5 + c).Value)
@@ -189,26 +208,15 @@ Private Sub WriteBand(ws As Worksheet, db As Worksheet, r As Long, keyBase As St
     Loop
 End Sub
 
-' 共通テスト対策（V〜Z列）
+' 共通テスト対策（V〜Z列）：共テDB の「受験科目の項目」に、データシートで共通テストのチェックが付いている講座だけ載せる
 Private Sub WriteKyote(ws As Worksheet, r As Long, subj As String)
-    Dim kd As Worksheet, i As Long, k As Long, tag As String, ok As Boolean, lastR As Long
-    Dim bunri As String, soc As String
+    Dim kd As Worksheet, i As Long, k As Long, lastR As Long
     Set kd = ThisWorkbook.Worksheets("共テDB")
-    bunri = NV("kBunri")
-    soc = NV("kSocial1") & "/" & NV("kSocial2")
     lastR = Application.WorksheetFunction.CountA(kd.Columns(1))
     k = 0
     For i = 2 To lastR
         If CStr(kd.Cells(i, 1).Value) = subj Then
-            tag = CStr(kd.Cells(i, 7).Value)
-            Select Case tag
-                Case "全", "情報": ok = True
-                Case "文系", "理系": ok = (tag = bunri)
-                Case "公共政経": ok = (InStr(soc, "政経") > 0)
-                Case "公共倫理": ok = (InStr(soc, "倫理") > 0)
-                Case Else: ok = False
-            End Select
-            If ok And k < BLOCK Then
+            If ItemChecked(CStr(kd.Cells(i, 7).Value), 2) And k < BLOCK Then
                 ws.Cells(r + k, COL_KYOTE).Value = kd.Cells(i, 2).Value
                 ws.Cells(r + k, COL_KYOTE + 1).Value = kd.Cells(i, 3).Value
                 ws.Cells(r + k, COL_KYOTE + 2).Value = kd.Cells(i, 4).Value
@@ -218,6 +226,57 @@ Private Sub WriteKyote(ws As Worksheet, r As Long, subj As String)
             End If
         End If
     Next i
+End Sub
+
+' データシートの受験科目チェック：項目 item の 1=個別試験 / 2=共通テスト に チェック があるか
+Public Function ItemChecked(ByVal item As String, ByVal col As Long) As Boolean
+    Dim items As Range, m As Long
+    Set items = ThisWorkbook.Names("kItems").RefersToRange
+    m = FindRow(items, item)
+    If m = 0 Then
+        ItemChecked = False
+    Else
+        ItemChecked = (CStr(ThisWorkbook.Names("kChecks").RefersToRange.Cells(m, col).Value) = ChrW(&H2713))
+    End If
+End Function
+
+' ボタン：標準パターンでチェック（設定シートの標準パターン表から、いまの系統のチェックを入れる）
+Public Sub SetStandardChecks()
+    Dim tbl As Range, chk As Range, items As Range, sysName As String
+    Dim c As Long, colK As Long, colY As Long, i As Long, m As Long
+    Set tbl = ThisWorkbook.Names("kStdTable").RefersToRange
+    Set chk = ThisWorkbook.Names("kChecks").RefersToRange
+    Set items = ThisWorkbook.Names("kItems").RefersToRange
+    sysName = NV("kSystem")
+    For c = 2 To tbl.Columns.Count
+        If CStr(tbl.Cells(1, c).Value) = sysName & "・個別" Then colK = c
+        If CStr(tbl.Cells(1, c).Value) = sysName & "・共テ" Then colY = c
+    Next c
+    If colK = 0 Or colY = 0 Then
+        MsgBox "設定シートの標準パターンに『" & sysName & "』の列が見つかりません。", vbExclamation
+        Exit Sub
+    End If
+    gBusy = True
+    For i = 1 To items.Rows.Count
+        m = FindRow(tbl.Columns(1), CStr(items.Cells(i, 1).Value))
+        If m = 0 Then
+            chk.Cells(i, 1).Value = ""
+            chk.Cells(i, 2).Value = ""
+        Else
+            chk.Cells(i, 1).Value = CStr(tbl.Cells(m, colK).Value)
+            chk.Cells(i, 2).Value = CStr(tbl.Cells(m, colY).Value)
+        End If
+    Next i
+    gBusy = False
+    If NV("kAutoApply") = "する" Then AutoApply
+End Sub
+
+' ボタン：チェックを全部外す
+Public Sub ClearChecks()
+    gBusy = True
+    ThisWorkbook.Names("kChecks").RefersToRange.ClearContents
+    gBusy = False
+    If NV("kAutoApply") = "する" Then AutoApply
 End Sub
 
 ' 模試・自学シート ② 家庭学習推奨教材：管理表の【家】の教材を教材マスタと照合して並べる

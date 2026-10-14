@@ -4,7 +4,7 @@
 
 元の試作ファイルを土台にして見た目（書式・色・罫線）を引き継ぎ、
   - 管理表に「高2の1月」列を追加（17期間：高2の1月〜直前Ⅱ期）
-  - 生徒情報（入力）・志望校マスタ・講座マスタ・教材マスタ・カリキュラムDB・共テDB・使い方 を追加
+  - データシート（入力）・志望校マスタ・講座マスタ・教材マスタ・カリキュラムDB・共テDB・使い方 を追加
   - VBA（vba/ 以下のソース）から vbaProject.bin を生成して .xlsm にする
 """
 import os
@@ -36,6 +36,8 @@ YELLOW_IN = "FFF6CC"   # 入力セル（黄色）
 GOLD = "FFD678"
 
 PLAN = "合格一貫カリキュラム"
+INPUT = "データシート"
+CHK_FIRST = 22                            # データシート：受験科目チェック表の先頭行
 FIRST, BLOCK, NSUB, NPER = 8, 6, 12, D.NPER
 LAST = FIRST + NSUB * BLOCK - 1          # 79
 COL_PROG, COL_CHECK, COL_KY = 19, 21, 22  # S, U, V
@@ -141,65 +143,46 @@ def copy_cf(src, dst, rmap=lambda r: r, cmap=lambda c: c, keep=lambda rng: True)
 
 
 # ============================================================ Python 版の反映ロジック（初期表示用・VBA と同じ規則）
-def lvl_num(x, th_hard=60, th_std=50):
-    return 3 if x >= th_hard else 2 if x >= th_std else 1
+def univ_table():
+    """大学名 -> (区分, 文系偏差値, 理系偏差値, 地域, 文系レベル, 理系レベル)"""
+    return {u[0]: (u[1], u[2], u[3], u[4], D.school_level(u[2]), D.school_level(u[3])) for u in D.UNIVERSITIES}
 
 
 def judge(inp, univ):
-    """生徒情報の数式と同じ判定"""
+    """データシートの数式と同じ判定（レベルは志望校で決める）"""
     u = univ.get(inp["school1"])
     kubun = u[0] if u else "国公立"
     bunri = inp["bunri"] or "文系"
     system = ("私大" if kubun == "私立" else "国立") + bunri
-    if inp.get("target_manual") not in (None, ""):
-        target = inp["target_manual"]
-    elif u:
-        b, r = u[1], u[2]
+    target = None
+    level = None
+    if u:
+        b, r, lb, lr = u[1], u[2], u[4], u[5]
         target = (r if r is not None else b) if bunri == "理系" else (b if b is not None else r)
-    else:
-        target = None
-    cur = inp.get("current")
-    pre = lvl_num(cur) if cur not in (None, "") else (lvl_num(target) if target is not None else 2)
-    tgt = lvl_num(target) if target is not None else pre
-    post = max(pre, min(tgt, pre + 1))
-    return dict(kubun=kubun, bunri=bunri, system=system, target=target,
-                pre=D.LEVELS[pre - 1], post=D.LEVELS[post - 1])
+        level = (lr or lb) if bunri == "理系" else (lb or lr)
+    if inp.get("level_manual"):
+        level = inp["level_manual"]
+    level = level or "標準"
+    return dict(kubun=kubun, bunri=bunri, system=system, target=target, pre=level, post=level)
 
 
-def recommend_subjects(j, inp):
-    kok = j["system"].startswith("国立")
-    bunri, s1, s2, sci = j["bunri"], inp["social1"], inp["social2"], inp["science"]
-    ky_use = inp["kyote_use"] == "する"
+def standard_checks(system):
+    ko, ky = D.STANDARD[system]
+    return {it: (it in ko, it in ky) for it in D.ITEM_NAMES}
+
+
+def subjects_from_checks(checks):
+    """受験科目のチェック（17項目）→ 管理表の12科目の（個別, 共テ）"""
     out = {}
     for subj in D.SUBJECT_NAMES:
-        if subj == "英語":
-            e = True
-        elif subj == "数学":
-            e = bunri == "理系" or kok or s1 == "数学"
-        elif subj in ("現代文", "古文"):
-            e = bunri == "文系"
-        elif subj == "漢文":
-            e = bunri == "文系" and kok
-        elif subj in ("日本史", "世界史", "地理"):
-            e = bunri == "文系" and s1 == subj
-        elif subj in ("物理", "化学", "生物"):
-            e = bunri == "理系" and subj in sci
-        else:
-            e = False
-        if kok:
-            if subj in ("英語", "数学", "現代文", "古文", "漢文", "公共・情報"):
-                k = True
-            elif subj in ("日本史", "世界史", "地理"):
-                k = s1 == subj or s2 == subj
-            else:
-                k = subj in sci
-        else:
-            k = e and ky_use
-        out[subj] = ("○" if e else "", "○" if k else "")
+        items = [it for it, blk in D.ITEMS if blk == subj]
+        ko = any(checks[it][0] for it in items)
+        ky = any(checks[it][1] for it in items)
+        out[subj] = ("○" if ko else "", "○" if ky else "")
     return out
 
 
-def reflect(ws_plan, j, inp, subjects, db_index, school):
+def reflect(ws_plan, j, checks, subjects, db_index, school):
     """管理表に書き込む（VBA の BuildCurriculum と同じ）"""
     for m in list(ws_plan.merged_cells.ranges):
         if m.min_row >= FIRST and m.max_row <= LAST and m.min_col >= 2 and m.max_col <= 1 + NPER:
@@ -235,13 +218,10 @@ def reflect(ws_plan, j, inp, subjects, db_index, school):
                     c = e + 1
         if ky == "○":
             k = 0
-            soc = inp["social1"] + "/" + inp["social2"]
-            for (subj2, name, m9, m10, m11, m12, tag) in D.KYOTE:
+            for (subj2, name, m9, m10, m11, m12, item) in D.KYOTE:
                 if subj2 != subj:
                     continue
-                ok = (tag in ("全", "情報") or (tag in ("文系", "理系") and tag == j["bunri"])
-                      or (tag == "公共政経" and "政経" in soc) or (tag == "公共倫理" and "倫理" in soc))
-                if ok and k < BLOCK:
+                if checks[item][1] and k < BLOCK:
                     for i, v in enumerate((name, m9, m10, m11, m12)):
                         ws_plan.cell(r + k, COL_KY + i).value = v or None
                     k += 1
@@ -273,17 +253,16 @@ def materials_for(ws_plan, subjects):
 def build(src_path, out_path, sample=None):
     sample = sample or dict(name="", highschool="", grade="高2", tantou="",
                             school1="一橋大学", school2="", school3="", bunri="文系",
-                            current=57.5, target_manual=None, social1="日本史", social2="公共・政経",
-                            science="化学基礎・生物基礎", kyote_use="しない", auto="する")
+                            current=57.5, level_manual=None, auto="する", checks=None)
     wb = openpyxl.load_workbook(src_path)
     old_plan, old_mock, old_rep, old_set = wb[PLAN], wb["模試・自学"], wb["成績表"], wb["設定"]
     for ws in (old_plan, old_mock, old_rep, old_set):
         ws.title = "_old_" + ws.title
-    univ = {u[0]: (u[1], u[2], u[3]) for u in D.UNIVERSITIES}
+    univ = univ_table()
 
     # ---------------------------------------------------------------- シート作成（並び順）
     ws_how = wb.create_sheet("使い方")
-    ws_in = wb.create_sheet("生徒情報")
+    ws_in = wb.create_sheet(INPUT)
     ws_plan = wb.create_sheet(PLAN)
     ws_mock = wb.create_sheet("模試・自学")
     ws_rep = wb.create_sheet("成績表")
@@ -307,10 +286,12 @@ def build(src_path, out_path, sample=None):
 
     # ================================================================ 設定
     build_settings(ws_set, old_set, name)
-    # ================================================================ 生徒情報
-    build_input(ws_in, name, sample)
+    # ================================================================ データシート
+    j = judge(sample, univ)
+    checks = sample.get("checks") or standard_checks(j["system"])
+    build_input(ws_in, name, sample, checks)
     # ================================================================ マスタ類
-    build_masters(ws_univ, ws_mat, ws_course, ws_db, ws_ky, name)
+    build_masters(ws_univ, ws_mat, ws_course, ws_db, ws_ky, name, univ)
     # ================================================================ 管理表
     build_plan(ws_plan, old_plan)
     # ================================================================ 模試・自学 / 成績表
@@ -319,13 +300,9 @@ def build(src_path, out_path, sample=None):
     build_howto(ws_how)
 
     # 初期表示：サンプル入力でおすすめを反映しておく
-    j = judge(sample, univ)
-    subjects = recommend_subjects(j, sample)
-    for i, subj in enumerate(D.SUBJECT_NAMES):
-        ws_set.cell(SET_FIRST + i, 2).value = subjects[subj][0] or None
-        ws_set.cell(SET_FIRST + i, 3).value = subjects[subj][1] or None
+    subjects = subjects_from_checks(checks)
     db_index = {(r[0], r[1], r[2], r[3]): r[4] for r in D.build_db()}
-    reflect(ws_plan, j, sample, subjects, db_index, sample["school1"] or "志望校")
+    reflect(ws_plan, j, checks, subjects, db_index, sample["school1"] or "志望校")
     mats = materials_for(ws_plan, subjects)
     for i, m in enumerate(mats):
         r = MAT_FIRST + i
@@ -349,9 +326,9 @@ def build(src_path, out_path, sample=None):
     ws_plan.print_area = f"A1:Z{LAST + 2}"
     ws_rep.print_area = "A1:L60"
     wb.code_name = "ThisWorkbook"
-    wb.active = wb.sheetnames.index("生徒情報")
+    wb.active = wb.sheetnames.index(INPUT)
     for ws in wb.worksheets:
-        ws.sheet_view.tabSelected = ws.title == "生徒情報"
+        ws.sheet_view.tabSelected = ws.title == INPUT
 
     tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False).name
     wb.save(tmp)
@@ -367,15 +344,19 @@ def build(src_path, out_path, sample=None):
 
     btn = dict(fill=NAVY)
     buttons = {
-        "生徒情報": [
-            dict(col=4, row=3, col2=7, row2=6, text="おすすめカリキュラムを反映", macro="ApplyRecommended", size=1200, **btn),
-            dict(col=4, row=7, col2=7, row2=9, text="成績表を印刷", macro="PrintReport", fill="3462B0"),
-            dict(col=4, row=10, col2=7, row2=12, text="管理表（A3）を印刷", macro="PrintPlan", fill="3462B0"),
+        INPUT: [
+            dict(col=5, row=3, col2=8, row2=6, text="カリキュラムに反映", macro="ApplyRecommended", size=1200, **btn),
+            dict(col=5, row=7, col2=8, row2=9, text="成績表を印刷", macro="PrintReport", fill="3462B0"),
+            dict(col=5, row=10, col2=8, row2=12, text="管理表（A3）を印刷", macro="PrintPlan", fill="3462B0"),
+            dict(col=5, row=CHK_FIRST - 1, col2=8, row2=CHK_FIRST + 2, text="標準パターンでチェック", macro="SetStandardChecks",
+                 fill="E88A12", size=1000),
+            dict(col=5, row=CHK_FIRST + 3, col2=8, row2=CHK_FIRST + 5, text="チェックを全部外す", macro="ClearChecks",
+                 fill="828CA0", size=1000),
         ],
         PLAN: [
             dict(col=27, row=0, col2=30, row2=3, text="成績表を印刷", macro="PrintReport", **btn),
             dict(col=27, row=6, col2=30, row2=8, text="科目を反映", macro="ApplySubjects", fill="3462B0"),
-            dict(col=27, row=12, col2=30, row2=15, text="おすすめカリキュラムを反映", macro="ApplyRecommended", fill="E88A12", size=1000),
+            dict(col=27, row=12, col2=30, row2=15, text="カリキュラムに反映", macro="ApplyRecommended", fill="E88A12", size=1000),
         ],
         "設定": [dict(col=7, row=11, col2=10, row2=13, text="科目を反映", macro="ApplySubjects", **btn)],
     }
@@ -405,65 +386,53 @@ def build_settings(ws, old, name):
     ws["A6"] = ("※ 終了日は仮の値（要確認）。塾の年間予定に合わせて書き換えてください。"
                 "終了日を過ぎても受講済み(☑)でない回・☐は、管理表で赤く表示されます。")
     ws["A8"], ws["B8"] = "偏差値の基準", 40
-    # 受験科目
-    ws["A11"] = "受験科目（「おすすめカリキュラムを反映」で E・F 列の○が B・C 列にコピーされます。手で変えたら「科目を反映」ボタン）"
-    for col, txt in ((5, "おすすめ：個別"), (6, "おすすめ：共テ")):
-        c = ws.cell(12, col, txt)
-        c._style = copy(ws["C12"]._style)
-        ws.column_dimensions[L(col)].width = 13
-    sysx, bun, s1, s2, sci, kyu = "kSystem", "kBunri", "kSocial1", "kSocial2", "kScience", "kKyoteUse"
-    kok = f'LEFT({sysx},2)="国立"'
+    # 受験科目（データシートのチェックから自動）
+    ws["A11"] = "受験科目（データシートの受験科目チェックから自動で○が付きます。ここは直接入力しない）"
+    rows_of = {it: CHK_FIRST + i for i, it in enumerate(D.ITEM_NAMES)}
     for i, subj in enumerate(D.SUBJECT_NAMES):
         r = SET_FIRST + i
-        A = f"$A{r}"
-        if subj == "英語":
-            e = '"○"'
-        elif subj == "数学":
-            e = f'IF(OR({bun}="理系",{kok},{s1}="数学"),"○","")'
-        elif subj in ("現代文", "古文"):
-            e = f'IF({bun}="文系","○","")'
-        elif subj == "漢文":
-            e = f'IF(AND({bun}="文系",{kok}),"○","")'
-        elif subj in ("日本史", "世界史", "地理"):
-            e = f'IF(AND({bun}="文系",{s1}={A}),"○","")'
-        elif subj in ("物理", "化学", "生物"):
-            e = f'IF(AND({bun}="理系",ISNUMBER(SEARCH({A},{sci}))),"○","")'
-        else:
-            e = '""'
-        if subj in ("英語", "数学", "現代文", "古文", "漢文", "公共・情報"):
-            k_kok = '"○"'
-        elif subj in ("日本史", "世界史", "地理"):
-            k_kok = f'IF(OR({s1}={A},{s2}={A}),"○","")'
-        else:
-            k_kok = f'IF(ISNUMBER(SEARCH({A},{sci})),"○","")'
-        ws.cell(r, 5).value = "=" + e
-        ws.cell(r, 6).value = f'=IF({kok},{k_kok},IF({kyu}="する",E{r},""))'
-        for col in (5, 6):
-            ws.cell(r, col)._style = copy(ws.cell(r, 4)._style)
-            ws.cell(r, col).font = font(10, True, GRAY)
-            ws.cell(r, col).alignment = Alignment(horizontal="center", vertical="center")
+        items = [it for it, blk in D.ITEMS if blk == subj]
+        for col, cc in ((2, "B"), (3, "C")):
+            refs = ",".join(f"'{INPUT}'!${cc}${rows_of[it]}=\"✓\"" for it in items)
+            ws.cell(r, col).value = f'=IF(OR({refs}),"○","")'
         ws.cell(r, 4).value = f'=IF(OR(B{r}="○",C{r}="○"),"表示","非表示")'
-    ws["A25"] = "※ B・C列（○）は手で変更できます。変更後は「科目を反映」ボタンで管理表の表示/非表示を更新。"
-    dv = DataValidation(type="list", formula1='"○"', allow_blank=True)
-    ws.add_data_validation(dv)
-    dv.add(f"B{SET_FIRST}:C{SET_FIRST + NSUB - 1}")
+    ws["A25"] = "※ 管理表で科目の表示/非表示だけを直したいときは「科目を反映」ボタン。"
     copy_cf(old, ws)
 
-    # レベル判定の基準・系統メモ
+    # 標準パターン（データシートの「標準パターンでチェック」ボタンで使う）
     r0 = 27
-    ws.cell(r0, 1, "レベル判定の基準（偏差値）")._style = copy(old["A11"]._style)
-    rows = [("難関レベル", 60, "← この偏差値以上を『難関』とする（例：旧帝大・一橋・早慶上智など）", "難関閾値"),
-            ("標準レベル", 50, "← この偏差値以上を『標準』、未満を『基礎』とする", "標準閾値")]
-    for i, (a, b, c, n) in enumerate(rows):
-        r = r0 + 1 + i
-        ws.cell(r, 1, a)._style = copy(lab)
-        ws.cell(r, 2, b)._style = copy(old["B8"]._style)
-        ws.cell(r, 3, c)._style = copy(note)
-        name(n, f"'設定'!$B${r}")
-    ws.cell(r0 + 3, 1, "※ 前期（高2の1月〜夏期）は『現在の偏差値』、後期（9月〜直前）は『志望校の目標偏差値』でレベルを決めます。"
-                       "ただし後期は前期の1段階上まで（差が大きいときは講師と相談）。")._style = copy(note)
+    ws.cell(r0, 1, "標準パターン（データシートの「標準パターンでチェック」で入る✓。自由に書き換えてよい）")._style = copy(old["A11"]._style)
+    hdr = r0 + 1
+    ws.cell(hdr, 1, "項目")._style = copy(old["A12"]._style)
+    col = 2
+    for sysname in D.SYSTEMS:
+        for kind in ("個別", "共テ"):
+            c = ws.cell(hdr, col, f"{sysname}・{kind}")
+            c._style = copy(old["B12"]._style)
+            c.font = font(8, True, NAVY)
+            c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            col += 1
+    ws.row_dimensions[hdr].height = 26
+    for i, it in enumerate(D.ITEM_NAMES):
+        r = hdr + 1 + i
+        ws.cell(r, 1, it)._style = copy(old["A13"]._style)
+        col = 2
+        for sysname in D.SYSTEMS:
+            ko, ky = D.STANDARD[sysname]
+            for lst in (ko, ky):
+                c = ws.cell(r, col, "✓" if it in lst else None)
+                c._style = copy(old["B13"]._style)
+                c.alignment = Alignment(horizontal="center", vertical="center")
+                col += 1
+    std_last = hdr + len(D.ITEM_NAMES)
+    name("kStdTable", f"'設定'!$A${hdr}:$I${std_last}")
+    dv = DataValidation(type="list", formula1='"✓"', allow_blank=True)
+    ws.add_data_validation(dv)
+    dv.add(f"B{hdr + 1}:I{std_last}")
+    r0 = std_last + 2
+    ws.cell(r0, 1, "※ カリキュラムのレベル（難関/標準/基礎）は、志望校マスタの『レベル』列で決まります（偏差値との連動は今後検討）。")._style = copy(note)
     r1 = r0 + 5
-    ws.cell(r1, 1, "系統ごとの入試の目安（生徒情報シートに表示）")._style = copy(old["A11"]._style)
+    ws.cell(r1, 1, "系統ごとの入試の目安（データシートに表示）")._style = copy(old["A11"]._style)
     for i, sysname in enumerate(D.SYSTEMS):
         r = r1 + 1 + i
         ws.cell(r, 1, sysname)._style = copy(lab)
@@ -477,52 +446,49 @@ def build_settings(ws, old, name):
     ws.sheet_properties.tabColor = "828CA0"
 
 
-# ============================================================ 生徒情報シート
-def build_input(ws, name, s):
+# ============================================================ データシート
+def build_input(ws, name, s, checks):
     ws.sheet_view.showGridLines = False
-    ws.column_dimensions["A"].width = 26
-    ws.column_dimensions["B"].width = 30
-    ws.column_dimensions["C"].width = 58
-    ws.column_dimensions["D"].width = 3
-    for c in "EFGH":
-        ws.column_dimensions[c].width = 9
-    ws.column_dimensions["I"].width = 3
-    ws.column_dimensions["J"].width = 14
+    widths = {"A": 24, "B": 15, "C": 15, "D": 50, "E": 3, "F": 9, "G": 9, "H": 9, "I": 9, "J": 12, "K": 12}
+    for k, v in widths.items():
+        ws.column_dimensions[k].width = v
     ws.sheet_properties.tabColor = "E88A12"
-    ws.merge_cells("A1:C1")
-    ws["A1"] = "生徒情報・志望校の入力"
+    ws.merge_cells("A1:D1")
+    ws["A1"] = "データシート（生徒情報・志望校・受験科目）"
     ws["A1"].font, ws["A1"].fill = font(15, True, "FFFFFF"), fill(NAVY)
     ws["A1"].alignment = Alignment(vertical="center", indent=1)
     ws.row_dimensions[1].height = 30
-    ws.merge_cells("A2:C2")
-    ws["A2"] = ("黄色のセルに入力します。志望校・文理・偏差値・選択科目を入れると、"
-                "おすすめカリキュラムが管理表に自動で反映されます（マクロを有効にして開いてください）。")
+    ws.merge_cells("A2:D2")
+    ws["A2"] = ("黄色のセルに入力します。志望校・文理と、受験科目のチェック（✓）を入れると、"
+                "カリキュラムが管理表に自動で反映されます（マクロを有効にして開いてください）。")
     ws["A2"].font = font(9, color=GRAY)
     ws["A2"].alignment = Alignment(wrap_text=True, vertical="center")
     ws.row_dimensions[2].height = 30
 
     def section(r, text):
-        ws.merge_cells(f"A{r}:C{r}")
+        ws.merge_cells(f"A{r}:D{r}")
         c = ws.cell(r, 1, text)
         c.font, c.fill = font(11, True, "FFFFFF"), fill("1F4E9E")
         c.alignment = Alignment(vertical="center", indent=1)
         ws.row_dimensions[r].height = 20
 
-    def row(r, label, value=None, note="", inp=True, fmt=None):
+    def row(r, label, value=None, note="", inp=True, fmt=None, merge=True):
         a = ws.cell(r, 1, label)
         a.font, a.fill = font(10, True, NAVY), fill(PALE)
         a.alignment = Alignment(vertical="center", indent=1)
+        if merge:
+            ws.merge_cells(f"B{r}:C{r}")
         b = ws.cell(r, 2, value)
         b.font = font(11, True, INK if inp else NAVY)
         b.fill = fill(YELLOW_IN) if inp else fill("FFFFFF")
         b.alignment = Alignment(horizontal="center", vertical="center", shrink_to_fit=True)
         if fmt:
             b.number_format = fmt
-        c = ws.cell(r, 3, note)
-        c.font = font(8.5, color=GRAY)
-        c.alignment = Alignment(vertical="center", wrap_text=True)
-        for x in (a, b, c):
-            x.border = Border(bottom=THIN, top=THIN)
+        d = ws.cell(r, 4, note)
+        d.font = font(8.5, color=GRAY)
+        d.alignment = Alignment(vertical="center", wrap_text=True)
+        for col in range(1, 5):
+            ws.cell(r, col).border = Border(bottom=THIN, top=THIN)
         ws.row_dimensions[r].height = 21
 
     section(4, "■ 生徒")
@@ -530,74 +496,105 @@ def build_input(ws, name, s):
     row(6, "高校", s["highschool"] or None)
     row(7, "学年", s["grade"], "高2の1月スタートが標準（高3・既卒も可）")
     row(8, "担当", s["tantou"] or None)
-    section(10, "■ 志望校と成績（ここを変えると自動で反映）")
-    row(11, "第1志望校", s["school1"] or None, "リストから選択（志望校マスタ）。区分（国公立/私立）と目標偏差値はここで決まります")
-    row(12, "第2志望校", s["school2"] or None, "表示用（判定には使いません）")
-    row(13, "第3志望校", s["school3"] or None, "表示用（判定には使いません）")
+    section(10, "■ 志望校（第1志望校と文理を変えると自動で反映）")
+    row(11, "第1志望校", s["school1"] or None, "リストから選択（志望校マスタ）。区分（国公立/私立）とカリキュラムのレベルはここで決まります")
+    row(12, "第2志望校", s["school2"] or None, "表示用")
+    row(13, "第3志望校", s["school3"] or None, "表示用")
     row(14, "文理", s["bunri"], "文系 / 理系")
-    row(15, "現在の偏差値", s["current"], "直近の模試の総合偏差値（全統模試など）。前期のレベルを決めます", fmt="0.0")
-    row(16, "目標偏差値（手入力・任意）", s["target_manual"], "空欄なら志望校マスタの値を使います", fmt="0.0")
-    row(17, "地歴公民（第1選択）", s["social1"], "文系：個別試験・共テで使う科目。理系：共テの社会。私大文系で数学受験なら『数学』")
-    row(18, "地歴公民（第2・共テのみ）", s["social2"], "国公立文系で共テに2科目必要な場合など。不要なら『なし』")
-    row(19, "理科", s["science"], "文系は基礎2科目、理系は2科目を選択")
-    row(20, "私大の共通テスト利用", s["kyote_use"], "私立志望で共通テスト利用入試も受けるなら『する』")
-    row(21, "入力したら自動で反映", s["auto"], "『しない』にすると、ボタンを押したときだけ反映します")
+    row(15, "現在の偏差値（参考）", s["current"], "管理表・成績表に表示するだけ（レベル判定には使いません）", fmt="0.0")
+    row(16, "レベルの手動指定（任意）", s.get("level_manual"), "空欄なら志望校マスタのレベル。基礎 / 標準 / 難関 を選ぶと上書き")
+    row(17, "入力したら自動で反映", s["auto"], "『しない』にすると、ボタンを押したときだけ反映します")
 
-    section(23, "■ 自動判定（数式・入力不要）")
-    J = "$J"
+    section(19, "■ 受験科目（✓を付けた科目がカリキュラムに反映されます）")
+    ws.merge_cells("A20:D20")
+    ws["A20"] = ("セルをダブルクリック（またはリストから ✓ を選択）で付け外し。理科は文系なら『〇〇基礎』、理系なら『物理・化学・生物』に。"
+                 "右の『標準パターンでチェック』で、系統ごとの一般的なパターンが入ります。")
+    ws["A20"].font = font(8.5, color=GRAY)
+    ws["A20"].alignment = Alignment(wrap_text=True, vertical="center")
+    ws.row_dimensions[20].height = 28
+    for col, txt in enumerate(("科目", "個別試験", "共通テスト", "管理表での扱い"), start=1):
+        c = ws.cell(CHK_FIRST - 1, col, txt)
+        c.font, c.fill = font(10, True, "FFFFFF"), fill(NAVY)
+        c.alignment = Alignment(horizontal="center", vertical="center")
+    color_of = dict(D.SUBJECTS)
+    for i, (it, blk) in enumerate(D.ITEMS):
+        r = CHK_FIRST + i
+        a = ws.cell(r, 1, it)
+        a.font, a.fill = font(10, True, "FFFFFF"), fill(color_of[blk])
+        a.alignment = Alignment(horizontal="center", vertical="center")
+        ko, ky = checks[it]
+        for col, v in ((2, ko), (3, ky)):
+            c = ws.cell(r, col, "✓" if v else None)
+            c.font = font(13, True, "1E8A4A")
+            c.fill = fill(YELLOW_IN)
+            c.alignment = Alignment(horizontal="center", vertical="center")
+            c.border = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
+        note = f"管理表『{blk}』の欄" + ("（共通テストのみの項目）" if it in ("物理基礎", "化学基礎", "生物基礎", "公共・政経", "公共・倫理", "情報Ⅰ") else "")
+        if it in ("地理",):
+            note += "。個別試験の講座は仮"
+        d = ws.cell(r, 4, note)
+        d.font = font(8.5, color=GRAY)
+        d.alignment = Alignment(vertical="center")
+        d.border = Border(bottom=THIN)
+        ws.row_dimensions[r].height = 18
+    last_chk = CHK_FIRST + len(D.ITEMS) - 1
+    dv = DataValidation(type="list", formula1='"✓"', allow_blank=True)
+    ws.add_data_validation(dv)
+    dv.add(f"B{CHK_FIRST}:C{last_chk}")
+
+    j0 = last_chk + 2            # 自動判定
+    section(j0, "■ 自動判定（数式・入力不要）")
+    R = {k: j0 + 1 + i for i, k in enumerate(("kubun", "system", "target", "level", "memo", "pattern"))}
     calc = [
-        (24, "区分", f'=IF(B11="","国公立",IFERROR(INDEX(志望校区分,MATCH(B11,志望校リスト,0)),"国公立"))', ""),
-        (25, "系統", '=IF(B24="私立","私大","国立")&J14', "国立文系 / 国立理系 / 私大文系 / 私大理系"),
-        (26, "志望校の目標偏差値", '=IF(B16<>"",B16,IF(J14="理系",IF(K26<>"",K26,J26),IF(J26<>"",J26,K26)))',
-         "志望校マスタの値（学部・方式で違うので目安）"),
-        (27, "目標との差（目標−現在）", '=IF(OR(B26="",B15=""),"",B26-B15)', "プラスなら、その分だけ伸ばす必要があります"),
-        (28, "前期レベル（高2の1月〜夏期）", '=CHOOSE(J28,"基礎","標準","難関")', "現在の偏差値で判定"),
-        (29, "後期レベル（9月〜直前）", '=CHOOSE(J30,"基礎","標準","難関")', "志望校の目標偏差値で判定（前期の1段階上まで）"),
-        (30, "判定コメント",
-         '=IF(J29>J28+1,"目標との差が大きいため、後期は1段階上のレベルまでにしています（講師と相談して調整）",'
-         'IF(J29>J28,"後期でレベルを1段階上げて、志望校レベルに合わせます","前期・後期とも同じレベルで仕上げます"))', ""),
-        (31, "入試の目安", '=IFERROR(VLOOKUP(B25,系統メモ,2,FALSE),"")', ""),
-        (32, "おすすめパターン", '=B25&"／前期："&B28&"／後期："&B29', "カリキュラムDB のこの組み合わせを管理表に反映します"),
+        (R["kubun"], "区分", '=IF(B11="","国公立",IFERROR(INDEX(志望校区分,MATCH(B11,志望校リスト,0)),"国公立"))', ""),
+        (R["system"], "系統", f'=IF(B{R["kubun"]}="私立","私大","国立")&J14', "国立文系 / 国立理系 / 私大文系 / 私大理系"),
+        (R["target"], "志望校の目標偏差値（参考）",
+         f'=IF(J14="理系",IF(K{R["target"]}<>"",K{R["target"]},J{R["target"]}),IF(J{R["target"]}<>"",J{R["target"]},K{R["target"]}))',
+         "志望校マスタの値（目安）。表示するだけ"),
+        (R["level"], "カリキュラムのレベル",
+         f'=IF(B16<>"",B16,IF(J14="理系",IF(K{R["level"]}<>"",K{R["level"]},IF(J{R["level"]}<>"",J{R["level"]},"標準")),'
+         f'IF(J{R["level"]}<>"",J{R["level"]},IF(K{R["level"]}<>"",K{R["level"]},"標準"))))',
+         "志望校マスタの『レベル』列（または手動指定）"),
+        (R["memo"], "入試の目安", f'=IFERROR(VLOOKUP(B{R["system"]},系統メモ,2,FALSE),"")', ""),
+        (R["pattern"], "反映するパターン", f'=B{R["system"]}&"／"&B{R["level"]}&"レベル"', "カリキュラムDB のこの組み合わせを管理表に反映します"),
     ]
     for r, label, f, note in calc:
-        row(r, label, f, note, inp=False, fmt="0.0" if r in (26, 27) else None)
-    for r in (30, 31):
-        ws.merge_cells(f"B{r}:C{r}")
-        ws.cell(r, 2).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
-        ws.cell(r, 2).font = font(9, True, NAVY)
-        ws.row_dimensions[r].height = 30
+        row(r, label, f, note, inp=False, fmt="0.0" if r == R["target"] else None)
+    ws.unmerge_cells(f"B{R['memo']}:C{R['memo']}")
+    ws.merge_cells(f"B{R['memo']}:D{R['memo']}")
+    ws.cell(R["memo"], 2).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    ws.cell(R["memo"], 2).font = font(9, True, NAVY)
+    ws.row_dimensions[R["memo"]].height = 30
     # 補助セル（J〜K列）
-    ws["J22"] = "補助（数式）"
-    ws["J22"].font = font(8, color=GRAY)
+    ws["J4"] = "補助（数式）"
+    ws["J4"].font = font(8, color=GRAY)
+
+    def idx(rng):
+        return f'IFERROR(IF(INDEX({rng},MATCH($B$11,志望校リスト,0))="","",INDEX({rng},MATCH($B$11,志望校リスト,0))),"")'
+
     helpers = {
         "J14": '=IF(B14="理系","理系","文系")',
-        "J26": '=IFERROR(IF(INDEX(志望校文系,MATCH(B11,志望校リスト,0))="","",INDEX(志望校文系,MATCH(B11,志望校リスト,0))),"")',
-        "K26": '=IFERROR(IF(INDEX(志望校理系,MATCH(B11,志望校リスト,0))="","",INDEX(志望校理系,MATCH(B11,志望校リスト,0))),"")',
-        "J28": '=IF(ISNUMBER(B15),IF(B15>=難関閾値,3,IF(B15>=標準閾値,2,1)),IF(ISNUMBER(B26),IF(B26>=難関閾値,3,IF(B26>=標準閾値,2,1)),2))',
-        "J29": '=IF(ISNUMBER(B26),IF(B26>=難関閾値,3,IF(B26>=標準閾値,2,1)),J28)',
-        "J30": "=MAX(J28,MIN(J29,J28+1))",
-        "J32": '=IF(B11="","志望校",B11)',
-        "J33": '=IF(B5="","",B5)',
+        f"J{R['target']}": "=" + idx("志望校文系"),
+        f"K{R['target']}": "=" + idx("志望校理系"),
+        f"J{R['level']}": "=" + idx("志望校文系レベル"),
+        f"K{R['level']}": "=" + idx("志望校理系レベル"),
+        f"J{R['pattern']}": '=IF(B11="","志望校",B11)',
     }
     for ref, f in helpers.items():
         ws[ref] = f
         ws[ref].font = font(8, color=GRAY)
-    for col in "JK":
-        ws.column_dimensions[col].hidden = False
     names = {"kName": "$B$5", "kHighschool": "$B$6", "kGrade": "$B$7", "kTantou": "$B$8",
              "kSchool1": "$B$11", "kSchool2": "$B$12", "kSchool3": "$B$13",
-             "kBunri": "$J$14", "kCurrent": "$B$15", "kSocial1": "$B$17", "kSocial2": "$B$18",
-             "kScience": "$B$19", "kKyoteUse": "$B$20", "kAutoApply": "$B$21",
-             "kKubun": "$B$24", "kSystem": "$B$25", "kTarget": "$B$26", "kPreLevel": "$B$28",
-             "kPostLevel": "$B$29", "kPattern": "$B$32", "kSchool": "$J$32",
-             "kAutoInputs": "$B$11:$B$20"}
+             "kBunri": "$J$14", "kCurrent": "$B$15", "kAutoApply": "$B$17",
+             "kKubun": f"$B${R['kubun']}", "kSystem": f"$B${R['system']}", "kTarget": f"$B${R['target']}",
+             "kLevel": f"$B${R['level']}", "kPreLevel": f"$B${R['level']}", "kPostLevel": f"$B${R['level']}",
+             "kPattern": f"$B${R['pattern']}", "kSchool": f"$J${R['pattern']}",
+             "kItems": f"$A${CHK_FIRST}:$A${last_chk}", "kChecks": f"$B${CHK_FIRST}:$C${last_chk}"}
     for n, ref in names.items():
-        name(n, f"'生徒情報'!{ref}")
-    lists = [("B7", '"高2,高3,既卒"'), ("B14", '"文系,理系"'),
-             ("B17", '"日本史,世界史,地理,公共・政経,公共・倫理,数学"'),
-             ("B18", '"なし,日本史,世界史,地理,公共・政経,公共・倫理"'),
-             ("B19", '"化学基礎・生物基礎,物理基礎・化学基礎,物理基礎・生物基礎,物理・化学,化学・生物,物理・生物"'),
-             ("B20", '"する,しない"'), ("B21", '"する,しない"'), ("B11:B13", "=志望校リスト")]
+        name(n, f"'{INPUT}'!{ref}")
+    name("kAutoInputs", f"'{INPUT}'!$B$11,'{INPUT}'!$B$14,'{INPUT}'!$B$16")
+    lists = [("B7", '"高2,高3,既卒"'), ("B14", '"文系,理系"'), ("B16", '"基礎,標準,難関"'),
+             ("B17", '"する,しない"'), ("B11:B13", "=志望校リスト")]
     for ref, f in lists:
         dv = DataValidation(type="list", formula1=f, allow_blank=True)
         ws.add_data_validation(dv)
@@ -605,18 +602,15 @@ def build_input(ws, name, s):
     dv = DataValidation(type="decimal", operator="between", formula1="20", formula2="85", allow_blank=True,
                         error="偏差値は 20〜85 の数で入力してください", showErrorMessage=True)
     ws.add_data_validation(dv)
-    dv.add("B15:B16")
-    # ボタンの説明
-    notes = [(14, "← ボタン：管理表を、いまの判定で作り直します"),
-             (15, "（チェック済み☑があるときは確認が出ます）")]
-    for r, t in notes:
-        ws.cell(r, 5, t).font = font(8, color=GRAY)
+    dv.add("B15")
+    for r, t in ((14, "← ボタン：管理表をいまの内容で作り直します"), (15, "（チェック済み☑があるときは確認が出ます）")):
+        ws.cell(r, 6, t).font = font(8, color=GRAY)
     ws.freeze_panes = "A4"
     ws.page_setup.orientation = "portrait"
     ws.page_setup.paperSize = 9
     ws.sheet_properties.pageSetUpPr.fitToPage = True
     ws.page_setup.fitToWidth, ws.page_setup.fitToHeight = 1, 1
-    ws.print_area = "A1:C32"
+    ws.print_area = f"A1:D{R['pattern']}"
 
 
 # ============================================================ マスタ類
@@ -639,33 +633,43 @@ def body_font(ws, r, n, sz=9):
         c.border = Border(bottom=THIN)
 
 
-def build_masters(ws_univ, ws_mat, ws_course, ws_db, ws_ky, name):
+def build_masters(ws_univ, ws_mat, ws_course, ws_db, ws_ky, name, univ):
     # 志望校マスタ
-    header_row(ws_univ, ["大学名", "区分", "文系の目標偏差値", "理系の目標偏差値", "地域", "メモ（学部・方式など）"],
-               [26, 9, 12, 12, 8, 40])
-    for i, (u, kb, b, r, area) in enumerate(D.UNIVERSITIES, start=2):
-        for j, v in enumerate((u, kb, b, r, area), start=1):
+    header_row(ws_univ, ["大学名", "区分", "文系の目標偏差値", "理系の目標偏差値", "文系のレベル", "理系のレベル", "地域",
+                         "メモ（学部・方式など）"], [26, 9, 11, 11, 10, 10, 8, 36])
+    for i, (u, (kb, b, r, area, lb, lr)) in enumerate(univ.items(), start=2):
+        for j, v in enumerate((u, kb, b, r, lb, lr, area), start=1):
             ws_univ.cell(i, j, v)
-        body_font(ws_univ, i, 6)
+        body_font(ws_univ, i, 8)
         for j in (3, 4):
             ws_univ.cell(i, j).number_format = "0.0"
             ws_univ.cell(i, j).alignment = Alignment(horizontal="center")
+        for j in (5, 6):
+            ws_univ.cell(i, j).font = font(9, True, NAVY)
+            ws_univ.cell(i, j).fill = fill(YELLOW_IN)
+            ws_univ.cell(i, j).alignment = Alignment(horizontal="center")
     n_end = 200
-    for i in range(len(D.UNIVERSITIES) + 2, n_end + 1):
-        for j in (1, 2, 3, 4):
-            ws_univ.cell(i, j).fill = fill(YELLOW_IN) if i < len(D.UNIVERSITIES) + 12 else PatternFill()
-    ws_univ["H1"] = ("※ 偏差値は大手予備校の公表値を参考にした『おおよその目安』です（学部・方式で異なる）。"
-                     "毎年更新してください。行を追加すれば生徒情報の選択肢に出ます（200行目まで）。")
-    ws_univ["H1"].font = font(9, color="C81E1E")
-    ws_univ["H1"].alignment = Alignment(wrap_text=True, vertical="top")
-    ws_univ.column_dimensions["H"].width = 50
+    for i in range(len(univ) + 2, len(univ) + 12):
+        for j in range(1, 7):
+            ws_univ.cell(i, j).fill = fill(YELLOW_IN)
+    ws_univ["J1"] = ("※ カリキュラムのレベルは『文系のレベル』『理系のレベル』列（難関/標準/基礎）で決まります。"
+                     "初期値は目標偏差値から仮に付けたもの（60以上=難関、50以上=標準）なので、塾の判断で直してください。"
+                     "偏差値は大手予備校の公表値を参考にした『おおよその目安』（参考表示のみ）。行を追加すればデータシートの選択肢に出ます（200行目まで）。")
+    ws_univ["J1"].font = font(9, color="C81E1E")
+    ws_univ["J1"].alignment = Alignment(wrap_text=True, vertical="top")
+    ws_univ.column_dimensions["J"].width = 50
     name("志望校リスト", f"'志望校マスタ'!$A$2:$A${n_end}")
     name("志望校区分", f"'志望校マスタ'!$B$2:$B${n_end}")
     name("志望校文系", f"'志望校マスタ'!$C$2:$C${n_end}")
     name("志望校理系", f"'志望校マスタ'!$D$2:$D${n_end}")
+    name("志望校文系レベル", f"'志望校マスタ'!$E$2:$E${n_end}")
+    name("志望校理系レベル", f"'志望校マスタ'!$F$2:$F${n_end}")
     dv = DataValidation(type="list", formula1='"国公立,私立"', allow_blank=True)
     ws_univ.add_data_validation(dv)
     dv.add(f"B2:B{n_end}")
+    dv = DataValidation(type="list", formula1='"基礎,標準,難関"', allow_blank=True)
+    ws_univ.add_data_validation(dv)
+    dv.add(f"E2:F{n_end}")
 
     # 教材マスタ
     header_row(ws_mat, ["照合キー（管理表の文言に含まれる語）", "教材名（出版社）", "教科", "目標（周）", "使い方・時期", "レベル", "区分"],
@@ -800,7 +804,7 @@ def build_plan(ws, old):
     # 見出し
     ws["A1"].value = "合格一貫\nカリキュラム"
     ws["E1"] = "=IF(kGrade=\"\",\"高2\",kGrade)"
-    ws["E2"] = ('=IF(LEFT(kSystem,2)="国立","国公立大","私立大")&"（"&kBunri&"）"&CHAR(10)&"前期 "&kPreLevel&" → 後期 "&kPostLevel')
+    ws["E2"] = ('=IF(LEFT(kSystem,2)="国立","国公立大","私立大")&"（"&kBunri&"）"&CHAR(10)&kLevel&"レベル"')
     ws["I1"] = ('="第1志望："&IF(kSchool1="","（未入力）",kSchool1)&IF(kSchool2="",""," ／ 第2志望："&kSchool2)'
                 '&IF(kSchool3="",""," ／ 第3志望："&kSchool3)&CHAR(10)&"目標偏差値："&IF(kTarget="","—",TEXT(kTarget,"0.0"))'
                 '&"　現在："&IF(kCurrent="","—",TEXT(kCurrent,"0.0"))')
@@ -837,12 +841,12 @@ def build_plan(ws, old):
     ws[f"A{LAST + 1}"] = (
         "【使い方】各科目6行：講座の帯／回（ダブルクリックで☑）／【塾】授業の教材／☐毎月の進み（ダブルクリックで☑）／【家】家庭学習の教材／☐毎月の進み。"
         "共通テスト対策は9月スタート（右欄の回もダブルクリックで☑）。終了日（設定シート）を過ぎても未完了は赤。"
-        "内容は『生徒情報』の志望校・偏差値から自動で組み立て（前期＝現在の偏差値、後期＝志望校の目標偏差値でレベルを選択）。"
+        "内容は『データシート』の志望校・受験科目のチェックから自動で組み立て（レベルは志望校で決定）。"
         "期間は高2の1月〜直前Ⅱ期（翌2月）。※＝推奨受講期間。講座の出典：2027年度 高校生ウイングネット学習・講座ガイド P5・P22-23（一部は仮置き：講座マスタ参照）。教材は仮（要確認）。")
     ws[f"V{LAST + 2}"] = '="作成日："&TEXT(基準日,"yyyy年m月d日")'
     for r, t in ((4, "↑ 押すと成績表（A4縦）の印刷プレビューが開きます"),
                  (9, "↑ 設定シートの受験科目（○）に合わせて科目を表示/非表示"),
-                 (16, "↑ 生徒情報の内容で管理表を作り直します")):
+                 (16, "↑ データシートの内容で管理表を作り直します")):
         c = ws.cell(r, 28, t)
         c.font = font(8, color=GRAY)
     ws.column_dimensions["AB"].width = 8.6
@@ -918,7 +922,7 @@ def build_mock(ws, old):
         ws[f"{col}14"] = f'=IFERROR(LOOKUP(2,1/({col}$6:{col}$13<>""),{col}$6:{col}$13),"")'
         ws[f"{col}15"] = f'=IF(OR({col}14="",{col}5=""),"",{col}14-{col}5)'
     ws["A18"] = "② 家庭学習推奨教材（全教科）　※ おすすめカリキュラムの反映で自動入力。『現在（周）』を毎回入力"
-    ws["A2"] = "※ 目標（志望校）の総合は生徒情報（志望校マスタ）から自動で入ります。教科別の目標は手入力"
+    ws["A2"] = "※ 目標（志望校）の総合はデータシート（志望校マスタ）から自動で入ります。教科別の目標は手入力"
     ws["A2"].font = font(8, color=GRAY)
     ws.print_area = "A1:J42"
     ws.page_setup.orientation, ws.page_setup.paperSize = "portrait", 9
@@ -941,7 +945,7 @@ def build_report(ws, old):
     plan = PLAN
     ws["C3"] = '=IF(kName="","（未入力）",kName&"　さん")'
     ws["I3"] = '=IF(kHighschool="","",kHighschool&"　")&kGrade'
-    ws["C4"] = ('=IF(LEFT(kSystem,2)="国立","国公立大","私立大")&"（"&kBunri&"）　前期 "&kPreLevel&" → 後期 "&kPostLevel')
+    ws["C4"] = ('=IF(LEFT(kSystem,2)="国立","国公立大","私立大")&"（"&kBunri&"）　"&kLevel&"レベル"')
     ws["I4"] = '=IF(kTantou="","",kTantou)'
     ws["C5"] = f"={plan}!I1"
     ws["A8"] = '=IFERROR(AVERAGE(F9,I9,L9),"")'
@@ -996,11 +1000,11 @@ def build_howto(ws):
     lines = [
         ("合格一貫カリキュラム　マスターテンプレート（生徒1人につき1ファイル）", "title"),
         ("このファイルを生徒ごとにコピーして使います（例：2027_山田太郎.xlsm）。マクロを有効にして開いてください。", "note"),
-        ("1. 生徒情報シート", "h"),
-        ("黄色のセルに 氏名・学年・第1〜第3志望校・文理・現在の偏差値・地歴公民・理科 を入力。", ""),
-        ("第1志望校（志望校マスタ）から『国公立／私立』と目標偏差値が決まり、系統（国立文系・国立理系・私大文系・私大理系）を自動判定。", ""),
-        ("前期（高2の1月〜夏期）のレベルは現在の偏差値、後期（9月〜直前）のレベルは志望校の目標偏差値で『基礎／標準／難関』から選ばれます。", ""),
-        ("入力を変えると、おすすめカリキュラムが管理表に自動で反映されます（☑ の記録があるときは確認が出ます）。", ""),
+        ("1. データシート（ここに入力するとカリキュラムに反映）", "h"),
+        ("黄色のセルに 氏名・学年・第1〜第3志望校・文理 を入力。第1志望校（志望校マスタ）で『国公立／私立』とカリキュラムのレベル（難関／標準／基礎）が決まります。", ""),
+        ("受験科目は17項目のチェック表。個別試験・共通テストの列にダブルクリックで ✓。『標準パターンでチェック』で系統ごとの一般的なパターンが入ります。", ""),
+        ("✓ を付けた科目だけが管理表に出ます（個別試験の✓＝講座と教材、共通テストの✓＝右側の共通テスト講座）。", ""),
+        ("入力やチェックを変えると管理表に自動で反映されます（☑ の記録があるときは確認が出ます）。", ""),
         ("2. 合格一貫カリキュラム（管理表・A3横で印刷）", "h"),
         ("各科目6行：講座の帯／回／【塾】授業の教材／☐（毎月の進み）／【家】家庭学習の教材／☐（毎月の進み）。期間は高2の1月〜直前Ⅱ期（翌2月）の17区分。", ""),
         ("受講した回・進んだ月は、セルをダブルクリック（タブレットはダブルタップ）で ☑。もう一度で外れます。右側は共通テスト対策（9月〜12月）。", ""),
@@ -1011,10 +1015,10 @@ def build_howto(ws):
         ("4. 成績表（A4縦）", "h"),
         ("『成績表を印刷』ボタンで、使っていない行を隠して印刷プレビューを開きます。総合達成度＝講座の受講・模試・家庭学習教材の平均。", ""),
         ("5. 設定シート", "h"),
-        ("年度（生徒の高3の年度）・各期間の終了日・レベル判定の基準偏差値（難関60／標準50）・受験科目の○を管理します。", ""),
+        ("年度（生徒の高3の年度）・各期間の終了日・標準パターン（系統ごとの受験科目の✓）を管理します。", ""),
         ("6. マスタ（志望校・教材・講座・カリキュラムDB・共テDB）", "h"),
+        ("志望校マスタ：大学ごとの区分と『文系のレベル／理系のレベル』（難関・標準・基礎）。レベルは塾の判断で直してください。", ""),
         ("カリキュラムDB：系統×科目×レベル×種別（講座/回/塾/家）の1行が17期間分。『←』は左のセルと結合（帯をのばす）。{志望校} は第1志望校名に置き換わります。", ""),
-        ("前期（1月〜夏期Ⅱ期）と後期（9月〜直前Ⅱ期）は別々のレベルから組み合わせるので、帯は夏期Ⅱ期と9月の間をまたがないようにしてください。", ""),
         ("講座名・教材・偏差値には仮置きを含みます（講座マスタ・教材マスタの確認状態を参照）。パンフレットと照合して直してください。", "note"),
     ]
     r = 1
