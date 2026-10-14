@@ -25,7 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import data as D  # noqa: E402
 import handout as H  # noqa: E402
-import graphs as G  # noqa: E402
+import report as RP  # noqa: E402
 from package import make_xlsm  # noqa: E402
 from vbaproject import build_vba_project  # noqa: E402
 
@@ -269,14 +269,13 @@ def build(src_path, out_path, sample=None):
     ws_ho = wb.create_sheet(H.SHEET)
     ws_mock = wb.create_sheet("模試・自学")
     ws_rep = wb.create_sheet("成績表")
-    ws_graph = wb.create_sheet(G.SHEET)
     ws_set = wb.create_sheet("設定")
     ws_univ = wb.create_sheet("志望校マスタ")
     ws_mat = wb.create_sheet("教材マスタ")
     ws_course = wb.create_sheet("講座マスタ")
     ws_db = wb.create_sheet("カリキュラムDB")
     ws_ky = wb.create_sheet("共テDB")
-    codenames = {ws_how: "shHowTo", ws_in: "shInput", ws_plan: "shPlan", ws_ho: "shHandout", ws_mock: "shMock", ws_rep: "shReport", ws_graph: "shGraph",
+    codenames = {ws_how: "shHowTo", ws_in: "shInput", ws_plan: "shPlan", ws_ho: "shHandout", ws_mock: "shMock", ws_rep: "shReport",
                  ws_set: "shSetting", ws_univ: "shUniv", ws_mat: "shMaterial", ws_course: "shCourse",
                  ws_db: "shDB", ws_ky: "shKyote"}
     for ws, cn in codenames.items():
@@ -300,8 +299,7 @@ def build(src_path, out_path, sample=None):
     build_plan(ws_plan, old_plan)
     # ================================================================ 模試・自学 / 成績表
     build_mock(ws_mock, old_mock)
-    build_report(ws_rep, old_rep)
-    G.build(ws_graph)
+    RP.build(ws_rep)
     build_howto(ws_how)
 
     # 初期表示：サンプル入力でおすすめを反映しておく
@@ -332,7 +330,6 @@ def build(src_path, out_path, sample=None):
         if n.startswith("_xlnm"):
             del wb.defined_names[n]
     ws_plan.print_area = f"A1:Z{LAST + 2}"
-    ws_rep.print_area = "A1:L60"
     wb.code_name = "ThisWorkbook"
     wb.active = wb.sheetnames.index(INPUT)
     for ws in wb.worksheets:
@@ -933,6 +930,8 @@ def build_mock(ws, old):
         ws[f"{col}14"] = f'=IFERROR(LOOKUP(2,1/({col}$6:{col}$13<>""),{col}$6:{col}$13),"")'
         ws[f"{col}15"] = f'=IF(OR({col}14="",{col}5=""),"",{col}14-{col}5)'
     ws["A18"] = "② 家庭学習推奨教材（全教科）　※ おすすめカリキュラムの反映で自動入力。『現在（周）』を毎回入力"
+    ws["A32"] = "③ 講師メモ（成績表には載りません）"
+    ws["A39"] = "④ 次回までの目標（メモ・成績表には載りません）"
     ws["A2"] = "※ 目標（志望校）の総合はデータシート（志望校マスタ）から自動で入ります。教科別の目標は手入力"
     ws["A2"].font = font(8, color=GRAY)
     ws.print_area = "A1:J42"
@@ -1024,10 +1023,10 @@ def build_howto(ws):
         ("2-2. 配布用カリキュラム（生徒に渡す・A3横）", "h"),
         ("管理表からチェック欄・進捗・空欄を除いて自動で作られます（反映のたびに更新）。共通テスト講座は各科目の9〜12月に入ります。『配布用を印刷』ボタンで印刷。", ""),
         ("3. 模試・自学シート", "h"),
-        ("模試の偏差値を古い順に入力。② の家庭学習推奨教材は反映時に自動で並ぶので、『現在（周）』だけ毎回入力。③講師コメント・④次回の目標も入力。", ""),
+        ("模試の偏差値を古い順に入力。② の家庭学習推奨教材は反映時に自動で並ぶので、『現在（周）』だけ毎回入力。③④は講師用のメモ欄（成績表には載りません）。", ""),
         ("4. 成績表（A4縦）", "h"),
-        ("『成績表を印刷』ボタンで、使っていない行を隠して、成績表と成績グラフ（2枚）の印刷プレビューを開きます。総合達成度＝講座の受講・模試・家庭学習教材の平均。", ""),
-        ("成績グラフ：達成度のドーナツ（総合・講座・模試・家庭学習）、期間ごとの受講回数（予定と受講済み）、模試の偏差値の推移。数式で自動更新。", ""),
+        ("A4縦1枚：①志望校までの達成度（ドーナツ）②講座の受講状況（科目別）③模試の偏差値の推移（折れ線＋目標・最新・差）④家庭学習推奨教材。", ""),
+        ("『成績表を印刷』ボタンで、使っていない科目・教材の行を隠して印刷プレビューを開きます。総合達成度＝講座の受講・模試・家庭学習教材の平均。", ""),
         ("5. 設定シート", "h"),
         ("年度（生徒の高3の年度）・各期間の終了日・標準パターン（系統ごとの受験科目の✓）を管理します。", ""),
         ("6. マスタ（志望校・教材・講座・カリキュラムDB・共テDB）", "h"),

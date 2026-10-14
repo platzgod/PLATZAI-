@@ -41,14 +41,13 @@ done:
 End Sub
 
 ' ボタン：成績表を印刷
-' 使っていない科目・模試・教材の行を隠してから、成績表と成績グラフ（2枚）の印刷プレビューを開く
+' 使っていない科目・教材の行を隠してから、成績表（A4縦1枚）の印刷プレビューを開く
 Public Sub PrintReport()
     Dim ws As Worksheet
     PrepareReport
     Set ws = ThisWorkbook.Worksheets("成績表")
     ws.Activate
-    ThisWorkbook.Worksheets(Array("成績表", "成績グラフ")).PrintPreview   ' 1枚目：レポート、2枚目：グラフ
-    ws.Select
+    ws.PrintPreview
 End Sub
 
 Public Sub PrepareReport()
@@ -56,13 +55,10 @@ Public Sub PrepareReport()
     Application.Calculate
     Set ws = ThisWorkbook.Worksheets("成績表")
     Application.ScreenUpdating = False
-    For r = 12 To 23                                   ' 講座：回が1つもない科目は隠す
+    For r = 22 To 33                                   ' ② 講座：回が1つもない科目は隠す（O列＝全回数）
         ws.Rows(r).Hidden = (Val(CStr(ws.Cells(r, "O").Value)) = 0)
     Next r
-    For r = 27 To 34                                   ' 模試：模試名が空の行は隠す
-        ws.Rows(r).Hidden = (CStr(ws.Cells(r, "A").Value) = "")
-    Next r
-    For r = 40 To 49                                   ' 自学教材：教材名が空の行は隠す
+    For r = 54 To 63                                   ' ④ 家庭学習教材：教材名が空の行は隠す
         ws.Rows(r).Hidden = (CStr(ws.Cells(r, "C").Value) = "")
     Next r
     Application.ScreenUpdating = True

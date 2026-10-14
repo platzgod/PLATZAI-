@@ -176,7 +176,7 @@ def main(path):
         # ダブルクリックの代わりに、☑ を付けて進捗の数式を確認
         plan.getCellRangeByName("C9").String = "☑" + plan.getCellRangeByName("C9").String
         doc.calculateAll()
-        print("進捗 S8 =", repr(plan.getCellRangeByName("S8").String), " 成績表 E8 =", off.cell(doc, "成績表", "E8"))
+        print("進捗 S8 =", repr(plan.getCellRangeByName("S8").String), " 成績表 C22 =", off.cell(doc, "成績表", "C22"))
         off.run(doc, "modReport.PrepareReport")
         print("HasChecks →", off.run(doc, "modCurriculum.HasChecks"))
         out = os.path.join(os.path.dirname(os.path.abspath(path)), "_lo_after_test.pdf")
