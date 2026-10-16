@@ -97,8 +97,7 @@ def handout_rows(ws_plan, subjects, first, block, col_ky):
 def summary_text(j, checks):
     ko = [it for it in D.ITEM_NAMES if checks[it][0]]
     ky = [it for it in D.ITEM_NAMES if checks[it][1]]
-    kb = "国公立大" if j["system"].startswith("国立") else "私立大"
-    return (f"{kb}（{j['bunri']}）・{j['pre']}レベル　｜　個別試験：{'・'.join(ko) or 'なし'}"
+    return (f"{j['pattern']}　｜　個別試験：{'・'.join(ko) or 'なし'}"
             f"　｜　共通テスト：{'・'.join(ky) or 'なし'}")
 
 

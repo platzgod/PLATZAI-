@@ -88,6 +88,28 @@ def _alt_cells(alt):
                 kai_parts[PERIOD_INDEX[p]].append(b["units"][p].replace(" ", ""))
         for p in h.get("star", []):
             star.add(PERIOD_INDEX[p])
+    # 幅の狭い帯は講座コードだけにする：1マスの帯、2マスでも夏期・直前（N/F 付き）で講座名が長い帯。
+    # ただし、その講座名が行のどこにも出なくなる場合は最初の帯に講座名を残す。
+    starts = []
+    for i in range(17):
+        if band[i] and band[i] != "←":
+            span = 1
+            while i + span < 17 and band[i + span] == "←":
+                span += 1
+            starts.append((i, span))
+    short = {}
+    for i, span in starts:
+        parts = band[i].split("／")
+        if span == 1 or (span == 2 and any(re.match(r"^[NF]", x) and len(x.split("　", 1)[-1]) > 7 for x in parts)):
+            short[i] = "／".join(x.split("　")[0] for x in parts)
+    shown = [band[k] for k, _ in starts if k not in short]
+    for i, _ in starts:
+        if i in short:
+            titles = [x.split("　", 1)[1] for x in band[i].split("／") if "　" in x]
+            if titles and not any(t in x for t in titles for x in shown):
+                shown.append(band[i])     # この帯で講座名を見せる
+                continue
+            band[i] = short[i]
     kai = []
     for i in range(17):
         k = _join_units(kai_parts[i])

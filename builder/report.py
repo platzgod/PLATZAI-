@@ -117,7 +117,7 @@ def build(ws):
              ("G4:H4", "高校・学年"), ("I4:L4", '=IF(kHighschool="","",kHighschool&"　")&kGrade')]),
         (5, [("A5:B5", "志望校"), ("C5:L5", '="第1志望　"&IF(kSchool1="","（未入力）",kSchool1)'
                                            '&IF(kSchool2="","","　／　第2志望　"&kSchool2)&IF(kSchool3="","","　／　第3志望　"&kSchool3)')]),
-        (6, [("A6:B6", "コース"), ("C6:F6", '=IF(LEFT(kSystem,2)="国立","国公立大","私立大")&"（"&kBunri&"）・"&kLevel&"レベル"'),
+        (6, [("A6:B6", "コース"), ("C6:F6", '=kPatternKey'),
              ("G6:H6", "担当"), ("I6:L6", '=IF(kTantou="","",kTantou)')]),
     ]
     for r, cells in info:

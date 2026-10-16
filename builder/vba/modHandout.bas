@@ -249,9 +249,9 @@ Private Sub Footer(ws As Worksheet, ByVal lastRow As Long)
     On Error GoTo 0
 End Sub
 
-' 3行目：系統・レベル・受験科目のまとめ
+' 3行目：パターン・受験科目のまとめ
 Private Function SummaryText() As String
-    Dim items As Range, chk As Range, i As Long, ko As String, ky As String, kb As String
+    Dim items As Range, chk As Range, i As Long, ko As String, ky As String
     Set items = ThisWorkbook.Names("kItems").RefersToRange
     Set chk = ThisWorkbook.Names("kChecks").RefersToRange
     For i = 1 To items.Rows.Count
@@ -266,6 +266,5 @@ Private Function SummaryText() As String
     Next i
     If ko = "" Then ko = "なし"
     If ky = "" Then ky = "なし"
-    If Left(NV("kSystem"), 2) = "国立" Then kb = "国公立大" Else kb = "私立大"
-    SummaryText = kb & "（" & NV("kBunri") & "）・" & NV("kLevel") & "レベル　｜　個別試験：" & ko & "　｜　共通テスト：" & ky
+    SummaryText = NV("kPatternKey") & "　｜　個別試験：" & ko & "　｜　共通テスト：" & ky
 End Function

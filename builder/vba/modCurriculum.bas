@@ -2,9 +2,9 @@ Option Explicit
 
 ' ============================================================================
 '  おすすめカリキュラムの自動反映
-'   データシートの「系統」「レベル」（数式で自動判定）と受験科目のチェックをもとに、
+'   データシートの「パターン」（講座ガイドの15種・志望校で自動判定）・講座の選択（上段/下段）と受験科目のチェックをもとに、
 '   カリキュラムDB / 共テDB / 教材マスタから管理表・模試自学シートへ書き込む。
-'   前期 = 高2の1月〜夏期Ⅱ期（17期間のうち 1〜11 列目）、後期 = 9月〜直前Ⅱ期（12〜17 列目）
+'   前期 = 冬期・1月〜夏期Ⅱ期（17期間のうち 1〜11 列目）、後期 = 9月〜直前Ⅱ期（12〜17 列目）
 ' ============================================================================
 
 Public Const PLAN_SHEET As String = "合格一貫カリキュラム"
@@ -35,8 +35,8 @@ Public Sub ApplyRecommended()
     BuildCurriculum
     If gLastError <> "" Then Exit Sub
     MsgBox "カリキュラムに反映しました。" & vbLf & vbLf & _
-           "系統：" & NV("kSystem") & vbLf & _
-           "レベル：" & NV("kLevel"), vbInformation, "カリキュラムに反映"
+           "パターン：" & NV("kPatternKey") & vbLf & _
+           "講座：" & NV("kTier"), vbInformation, "カリキュラムに反映"
 End Sub
 
 ' --- 確認なしで反映（生徒情報の入力変更時・テスト用）
@@ -116,7 +116,7 @@ Public Sub BuildCurriculum()
     Set ws = ThisWorkbook.Worksheets(PLAN_SHEET)
     Set db = ThisWorkbook.Worksheets("カリキュラムDB")
     Set st = ThisWorkbook.Worksheets("設定")
-    sysName = NV("kSystem")
+    sysName = NV("kPatternKey")
     preLv = NV("kPreLevel")
     postLv = NV("kPostLevel")
     school = NV("kSchool")
@@ -212,12 +212,13 @@ End Sub
 
 ' 共通テスト対策（V〜Z列）：共テDB の「受験科目の項目」に、データシートで共通テストのチェックが付いている講座だけ載せる
 Private Sub WriteKyote(ws As Worksheet, r As Long, subj As String)
-    Dim kd As Worksheet, i As Long, k As Long, lastR As Long
+    Dim kd As Worksheet, i As Long, k As Long, lastR As Long, pat As String
     Set kd = ThisWorkbook.Worksheets("共テDB")
+    pat = NV("kPatternKey")
     lastR = Application.WorksheetFunction.CountA(kd.Columns(1))
     k = 0
     For i = 2 To lastR
-        If CStr(kd.Cells(i, 1).Value) = subj Then
+        If CStr(kd.Cells(i, 1).Value) = subj And CStr(kd.Cells(i, 8).Value) = pat Then
             If ItemChecked(CStr(kd.Cells(i, 7).Value), 2) And k < BLOCK Then
                 ws.Cells(r + k, COL_KYOTE).Value = kd.Cells(i, 2).Value
                 ws.Cells(r + k, COL_KYOTE + 1).Value = kd.Cells(i, 3).Value

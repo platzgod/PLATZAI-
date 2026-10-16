@@ -16,22 +16,24 @@ from lo_harness import Office  # noqa: E402
 
 CASES = [
     # checks=None → 「標準パターンでチェック」ボタン（SetStandardChecks）で入れる
-    dict(name="国立理系・標準パターン", school1="群馬大学", bunri="理系", checks=None),
-    dict(name="私大文系・世界史", school1="明治大学", bunri="文系",
+    dict(name="国公立大（理系）・標準チェック", school1="群馬大学", bunri="理系", checks=None),
+    dict(name="国公立大（理系）・下段", school1="群馬大学", bunri="理系", tier="下段", checks=None),
+    dict(name="難関私立大（文系）・世界史", school1="明治大学", bunri="文系",
          checks=dict(ko=["英語", "現代文", "古文", "世界史"], ky=[])),
-    dict(name="私大理系・共テ利用", school1="東京理科大学", bunri="理系",
+    dict(name="難関私立大（理工系）・共テ利用", school1="東京理科大学", bunri="理系",
          checks=dict(ko=["英語", "数学", "化学", "生物"], ky=["英語", "数学", "化学", "生物"])),
-    dict(name="国立文系・地理・倫理", school1="千葉大学", bunri="文系",
+    dict(name="難関国公立大（文系）・地理・倫理", school1="千葉大学", bunri="文系",
          checks=dict(ko=["英語", "数学", "現代文", "古文", "漢文", "地理"],
                      ky=["英語", "数学", "現代文", "古文", "漢文", "地理", "物理基礎", "化学基礎", "公共・倫理", "情報Ⅰ"])),
-    dict(name="私大文系・数学・レベル手動", school1="早稲田大学", bunri="文系", level_manual="標準",
+    dict(name="手動指定・最難関私立大（文系）", school1="明治大学", bunri="文系", pattern_manual="最難関私立大（文系）",
          checks=dict(ko=["英語", "数学", "現代文", "古文"], ky=[])),
-    dict(name="国立文系・標準パターン", school1="一橋大学", bunri="文系", checks=None),
+    dict(name="最難関国公立大（文系）・標準チェック", school1="東京大学", bunri="文系", checks=None),
+    dict(name="有名私立大（薬学部）・下段", school1="明治薬科大学", bunri="理系", tier="下段",
+         checks=dict(ko=["英語", "数学", "化学"], ky=[])),
     dict(name="全項目チェック（DBにない組み合わせを含む）", school1="群馬大学", bunri="理系",
          checks=dict(ko=list(D.ITEM_NAMES), ky=list(D.ITEM_NAMES))),
-    dict(name="チェックなし", school1="", bunri="文系", checks=dict(ko=[], ky=[])),
+    dict(name="チェックなし・志望校なし", school1="", bunri="文系", checks=dict(ko=[], ky=[])),
 ]
-
 
 def case_checks(case, system):
     if case["checks"] is None:
@@ -78,10 +80,11 @@ def main(path):
         sett = off.sheet(doc, "設定")
         nm = lambda n: doc.NamedRanges.getByName(n).getReferredCells()  # noqa: E731
         for case in CASES:
-            off.set(doc, B.INPUT, "B17", "しない")  # 自動反映を切ってから入力（イベントの影響を避ける）
+            off.set(doc, B.INPUT, "B18", "しない")  # 自動反映を切ってから入力（イベントの影響を避ける）
             off.set(doc, B.INPUT, "B11", case["school1"])
             off.set(doc, B.INPUT, "B14", case["bunri"])
-            off.set(doc, B.INPUT, "B16", case.get("level_manual") or "")
+            off.set(doc, B.INPUT, "B16", case.get("pattern_manual") or "")
+            off.set(doc, B.INPUT, "B17", case.get("tier") or "上段")
             doc.calculateAll()
             j, checks, subjects, cells, merges, mats, hexp = expected(case)
             if case["checks"] is None:
@@ -98,10 +101,10 @@ def main(path):
                 print("    VBAエラー:", le)
             doc.calculateAll()
             got_sys = nm("kSystem").getCellByPosition(0, 0).String
-            got_lv = nm("kLevel").getCellByPosition(0, 0).String
+            got_lv = nm("kPatternKey").getCellByPosition(0, 0).String
             errs = []
-            if (got_sys, got_lv) != (j["system"], j["pre"]):
-                errs.append(f"判定 {got_sys},{got_lv} != {j['system']},{j['pre']}")
+            if (got_sys, got_lv) != (j["system"], j["pattern"]):
+                errs.append(f"判定 {got_sys},{got_lv} != {j['system']},{j['pattern']}")
             chk = nm("kChecks")
             gchk = {it: (chk.getCellByPosition(0, i).String == "✓", chk.getCellByPosition(1, i).String == "✓")
                     for i, it in enumerate(D.ITEM_NAMES)}
@@ -170,7 +173,7 @@ def main(path):
             hidden = [r for r in range(B.FIRST, B.LAST + 1) if not plan.getRows().getByIndex(r - 1).IsVisible]
             status = "OK" if not errs else "NG"
             fails += bool(errs)
-            print(f"[{status}] {case['name']}: {j['system']} {j['pre']}  配布用{hlast - H.H_FIRST + 1}行  セル{len(got)} 結合{len(gm)} 非表示行{len(hidden)} 教材{len(gmats)}")
+            print(f"[{status}] {case['name']}: {j['pattern']} {j['tier']}  配布用{hlast - H.H_FIRST + 1}行  セル{len(got)} 結合{len(gm)} 非表示行{len(hidden)} 教材{len(gmats)}")
             for e in errs:
                 print("    ", e)
         # ダブルクリックの代わりに、☑ を付けて進捗の数式を確認

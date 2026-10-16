@@ -373,12 +373,15 @@ def university_master():
                 order.append(key)
             if not base[key][col]:
                 base[key][col] = pt["name"]
-                base[key]["src"] = "ガイド記載"
+                base[key]["src" + col] = True
     base["群馬大学（医学部医学科）"]["pr"] = "最難関国公立大（理系）"
+    base["群馬大学（医学部医学科）"]["srcpr"] = True
     out = []
     for name in order:
         d = base[name]
         pb = d["pb"] or _default_pattern(d["kubun"], "文系", d["b"])
         pr = d["pr"] or _default_pattern(d["kubun"], "理系", d["r"])
-        out.append((name, d["kubun"], d["b"], d["r"], d["area"], pb, pr, d["src"] or "偏差値から仮に設定"))
+        gb, gr = d.get("srcpb"), d.get("srcpr")
+        src = "ガイド記載" if gb and gr else "文系はガイド記載・理系は仮" if gb else "理系はガイド記載・文系は仮" if gr else "偏差値から仮に設定"
+        out.append((name, d["kubun"], d["b"], d["r"], d["area"], pb, pr, src))
     return out
