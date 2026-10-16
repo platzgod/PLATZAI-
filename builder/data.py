@@ -320,7 +320,8 @@ MATERIALS = [
 if _RESEARCHED:     # 調べた教材があればそれを使う（共通テスト過去問・過去問は共通で最後に）
     _common = [m + ("",) for m in MATERIALS if m[0] in ("共通テスト過去問", "過去問")]
     _seen = set()
-    MATERIALS = [m for m in _RESEARCHED if not (m[0] in _seen or _seen.add(m[0]))] + _common
+    MATERIALS = [m for m in _RESEARCHED if m[0] not in ("共通テスト過去問", "過去問", P + "過去問")
+                 and not (m[0] in _seen or _seen.add(m[0]))] + _common
 
 # ---------------------------------------------------------------- 志望校マスタ
 # 文系・理系それぞれの「パターン」（ガイドの合格一貫カリキュラム15種）は、ガイドの志望大学の一覧で決める。
