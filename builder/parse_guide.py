@@ -69,7 +69,7 @@ def slots(page, y0, y1, xmin):
     out = set()
     for g in page.get_drawings():
         r, f = g["rect"], g.get("fill")
-        if f and r.x0 > xmin and y0 < r.y0 < y1 and 26 < r.height < 33 and r.width > 30 and sum(f) / 3 < 0.97:
+        if f and r.x0 > xmin and y0 < r.y0 < y1 and 28.5 < r.height < 33 and r.width > 30 and sum(f) / 3 < 0.97:
             out.add((round(r.y0, 1), round(r.y1, 1)))
     merged = []
     for a, b in sorted(out):
@@ -144,6 +144,17 @@ def parse_half(page, row, centers, xmin):
     return cells
 
 
+def lines(ws):
+    """単語を行ごとにまとめて、行ごとの文字列にする"""
+    out = []
+    for w in sorted(ws, key=lambda w: (w[1], w[0])):
+        if out and abs(w[1] - out[-1][0]) < 5:
+            out[-1][1].append(w)
+        else:
+            out.append([w[1], [w]])
+    return ["".join(x[4] for x in sorted(ws_, key=lambda w: w[0])) for _, ws_ in out]
+
+
 def kyote_list(page, y0, y1):
     """右ページの共通テスト対策講座の一覧（講座コード）"""
     codes = []
@@ -170,15 +181,22 @@ def main(pdf, out):
         lys, rys = header_rows(L, "冬期講習"), header_rows(R, "直前Ⅰ期")
         assert len(lys) == len(rys), (lp, lys, rys)
         for k, (ly, ry) in enumerate(zip(lys, rys)):
-            top = lys[k - 1] + 30 if k else 0
+            top = ly - 115
             end = min(section_end(L, ly), lys[k + 1] - 60 if k + 1 < len(lys) else 800)
             # 見出し（パターン名・志望大学）
             title_ws = [w for w in words(L) if top <= w[1] < ly - 20 and 150 < w[0] < 330]
             title = "".join(w[4] for w in sorted(title_ws, key=lambda w: (round(w[1]), w[0])))
             title = title.replace("高３", "").replace("高3", "").replace("　", "")
-            uni_ws = [w for w in words(L) if top <= w[1] < ly - 20 and w[0] >= 330] + \
-                     [w for w in words(R) if (rys[k - 1] + 30 if k else 0) <= w[1] < ry - 20 and w[0] < 330]
-            univ = "".join(w[4] for w in sorted(uni_ws, key=lambda w: (round(w[1]), w[0])))
+            utop = 0 if k == 0 else top
+            lw = [w for w in words(L) if utop <= w[1] < ly - 20 and w[0] >= 330]
+            rw = [w for w in words(R) if (0 if k == 0 else ry - 115) <= w[1] < ry - 20 and w[0] < 330]
+            ll, rl = lines(lw), lines(rw)
+            univ = ""
+            for i in range(max(len(ll), len(rl))):
+                univ += (ll[i] if i < len(ll) else "") + (rl[i] if i < len(rl) else "")
+            univ = univ.replace("※推奨受講期間", "")
+            if title.startswith("（"):
+                title = "有名私立大" + title
             lc = period_centers(L, LEFT_PERIODS + ["夏期Ⅲ期"], ly)
             rc = period_centers(R, RIGHT_PERIODS, ry)
             subs = []
