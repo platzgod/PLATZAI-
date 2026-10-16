@@ -703,17 +703,22 @@ def build_masters(ws_univ, ws_mat, ws_course, ws_db, ws_ky, ws_pat, name, univ):
     dv.add(f"E2:F{n_end}")
 
     # 教材マスタ
-    header_row(ws_mat, ["照合キー（管理表の文言に含まれる語）", "教材名（出版社）", "教科", "目標（周）", "使い方・時期", "レベル", "区分"],
-               [26, 44, 9, 9, 40, 12, 18])
+    header_row(ws_mat, ["照合キー（管理表の文言に含まれる語）", "教材名（出版社）", "教科", "目標（周）", "使い方・時期", "対象", "区分",
+                        "出典（推薦・出版社のページ）"], [24, 44, 9, 8, 40, 20, 16, 40])
     for i, m in enumerate(D.MATERIALS, start=2):
         for j, v in enumerate(m, start=1):
             ws_mat.cell(i, j, v if v != "" else None)
-        body_font(ws_mat, i, 7)
-    ws_mat["I1"] = ("※ 管理表の【家】の帯に『照合キー』が含まれると、模試・自学シート②の教材リストに自動で載ります。"
-                    "教材を差し替えるときは、カリキュラムDB の文言とこの表をセットで直してください。教材はすべて仮（要確認）。")
-    ws_mat["I1"].font = font(9, color="C81E1E")
-    ws_mat["I1"].alignment = Alignment(wrap_text=True, vertical="top")
-    ws_mat.column_dimensions["I"].width = 50
+        body_font(ws_mat, i, 8)
+        if len(m) > 7 and str(m[7]).startswith("http"):
+            ws_mat.cell(i, 8).hyperlink = m[7]
+            ws_mat.cell(i, 8).font = font(8, color="1F4E9E", underline="single")
+    ws_mat.auto_filter.ref = f"A1:H{len(D.MATERIALS) + 1}"
+    ws_mat["J1"] = ("※ 管理表の【家】の帯に『照合キー』が含まれると、模試・自学シート②の教材リストに自動で載ります。"
+                    "教材は志望大学のパターン（講座ガイドの15パターン）ごとに、予備校講師・出版社・合格体験記などの公開情報を調べて選んだもの"
+                    "（2026年10月時点。改訂・品切れがあるので購入前に版を確認）。差し替えるときは カリキュラムDB の文言とこの表をセットで直してください。")
+    ws_mat["J1"].font = font(9, color="C81E1E")
+    ws_mat["J1"].alignment = Alignment(wrap_text=True, vertical="top")
+    ws_mat.column_dimensions["J"].width = 50
 
     # 講座マスタ（講座ガイド P4〜6 の講座一覧・参照用）
     header_row(ws_course, ["区分", "講座コード", "講座名", "教科", "レベル（★）", "練成", "夏期", "実戦", "直前", "1回", "回/ユニット",

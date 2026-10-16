@@ -75,6 +75,9 @@ KAI_STD_POST = ["実戦1", "実戦2", "実戦3", "実戦4", "直前1", "※"]
 KAI_SHORT_PRE = ["", "練成1", "練成2", "※", "※", "※", "※", "※", "※", "夏期1", "※"]
 KAI_SHORT_POST = ["実戦1", "実戦2", "※", "※", "直前1", "※"]
 
+import json  # noqa: E402
+import os  # noqa: E402
+
 import guide_data as G  # noqa: E402
 
 # ---------------------------------------------------------------- 教材の帯（塾・家）
@@ -190,14 +193,20 @@ def build_db():
                 band, kai = tiers[tier]
                 juku = [""] * NPER
                 ie = [""] * NPER
-                if subj in SUBJECT_NAMES:
+                sel = PATTERN_MATERIALS.get(pt["name"], {}).get(subj)
+                if sel:
+                    for a, b, t in sel["juku"]:
+                        _fill(juku, a, b, t)
+                    for a, b, t in sel["ie"]:
+                        _fill(ie, a, b, t)
+                elif subj in SUBJECT_NAMES:
                     for a, b, t in pick(JUKU, subj, pt["tier"], kubun, bunri) or []:
                         _fill(juku, a, b, t)
                     for a, b, t in pick(IE, subj, pt["tier"], kubun, bunri) or []:
                         _fill(ie, a, b, t)
-                if juku[0] == "" and subj in ("英語", "数学", "現代文", "古文"):
+                if not sel and juku[0] == "" and subj in ("英語", "数学", "現代文", "古文"):
                     juku[0] = "【塾】高2範囲の総復習・診断"
-                if kubun == "私大":
+                if not sel and kubun == "私大":
                     juku = [_shidai(t) for t in juku]
                     ie = [_shidai(t) for t in ie]
                 for kind, cells in zip(KINDS, (band, kai, juku, ie)):
@@ -232,6 +241,23 @@ def _fill(cells, a, b, text):
 # (科目欄, 講座名, 9月, 10月, 11月, 12月, 受験科目の項目, パターン)
 KYOTE = G.kyote_rows()
 PATTERN_NAMES = [pt["name"] for pt in G.patterns()]
+
+# ---------------------------------------------------------------- 志望大学別の教材（ネットで調べて精選・materials/*.json）
+# {パターン: {科目: {juku: [[開始, 終了, 文言]], ie: [...], note}}}、教材マスタの行（出典URLつき）
+def _load_materials():
+    pats, mats = {}, []
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "materials")
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        if not f.endswith(".json"):
+            continue
+        js = json.load(open(os.path.join(d, f), encoding="utf-8"))
+        for pn, subs in js["patterns"].items():
+            pats.setdefault(pn, {}).update(subs)
+        mats += [tuple(m) for m in js["materials"]]
+    return pats, mats
+
+
+PATTERN_MATERIALS, _RESEARCHED = _load_materials()
 
 # ---------------------------------------------------------------- 教材マスタ
 # (照合キー, 正式名（出版社）, 教科, 目標周回, 使い方, レベル, 区分)
@@ -291,6 +317,10 @@ MATERIALS = [
     ("共通テスト過去問", "共通テスト過去問研究（教学社）", "その他", 1, "9月〜。時間を計って本番形式で", "全", "家庭学習（塾推奨）"),
     ("過去問", "志望大学の過去問（赤本・教学社）", "その他", "", "11月〜。最低5年分。記述は講師が添削", "全", "家庭学習（塾推奨）"),
 ]
+if _RESEARCHED:     # 調べた教材があればそれを使う（共通テスト過去問・過去問は共通で最後に）
+    _common = [m + ("",) for m in MATERIALS if m[0] in ("共通テスト過去問", "過去問")]
+    _seen = set()
+    MATERIALS = [m for m in _RESEARCHED if not (m[0] in _seen or _seen.add(m[0]))] + _common
 
 # ---------------------------------------------------------------- 志望校マスタ
 # 文系・理系それぞれの「パターン」（ガイドの合格一貫カリキュラム15種）は、ガイドの志望大学の一覧で決める。
