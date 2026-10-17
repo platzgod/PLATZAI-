@@ -1,4 +1,3 @@
 __pycache__/
 *.pyc
-shoronbun/out/
-shoronbun_*.zip
+*.zip

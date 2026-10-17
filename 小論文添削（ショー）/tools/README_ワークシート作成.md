@@ -17,10 +17,10 @@
 ### A. コマンド一発（Claude API を使う）
 
 ```bash
-pip install -r shoronbun/requirements.txt
+pip install -r tools/requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
 
-python3 shoronbun/generate.py --university 東洋大学 --faculty 食環境科学部 \
+python3 tools/generate.py --university 東洋大学 --faculty 食環境科学部 \
     --department フードデータサイエンス学科 --admission 総合型選抜 \
     --theme "農業経営体数の推移" --theme "食品ロス"
 ```
@@ -36,17 +36,17 @@ python3 shoronbun/generate.py --university 東洋大学 --faculty 食環境科�
 | `--org` | 教材の発行元（既定: C3進学アカデミー） |
 | `--no-research` | ウェブ検索をしない |
 
-出力は `out/<大学>_<学部>/` に `.pptx`・`content.json`・`research.md`。
+出力は `ワークシート/<大学>_<学部>/` に `.pptx`・`content.json`・`research.md`。
 
 ### B. Claude Code に頼む（API キー不要）
 
 このリポジトリを Claude Code で開き、「〇〇大学 △△学部、テーマ□□で小論文ワークシートを作って」と頼む。
-`.claude/skills/shoronbun-worksheet/` の手順どおりに、調べる → JSON を書く → 字数チェック → スライド化 → 目視確認 まで行う。
+`.claude/skills/shou-worksheet/` の手順どおりに、調べる → JSON を書く → 字数チェック → スライド化 → 目視確認 まで行う。
 
 ### C. 内容を手で直して作り直す
 
 ```bash
-python3 shoronbun/render.py out/<…>/content.json out/<…>/ワークシート.pptx
+python3 tools/render.py ワークシート/<…>/content.json ワークシート/<…>/ワークシート.pptx
 ```
 
 ## ファイル
@@ -59,7 +59,7 @@ python3 shoronbun/render.py out/<…>/content.json out/<…>/ワークシート.
 | `prompts.py` | Claude への指示（事実の扱い・字数の目安など） |
 | `examples/toyo_food_datascience.json` | 元の東洋大学版を JSON にしたもの（AI の手本も兼ねる） |
 | `examples/sample_nursing.json` | 動作確認用の架空の大学（90分・1000字以内・3テーマ） |
-| `samples/` | 上の2つから作った .pptx |
+| `../ワークシート/` | 上の2つから作った .pptx（生成物もここに入る） |
 
 ## 自動で調整されるところ
 

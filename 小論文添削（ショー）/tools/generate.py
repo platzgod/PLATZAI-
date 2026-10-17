@@ -1,12 +1,12 @@
 """大学名・テーマを入れると、小論文ワークシート（.pptx）を作る。
 
-    python3 shoronbun/generate.py --university 早稲田大学 --faculty 人間科学部 \\
+    python3 tools/generate.py --university 早稲田大学 --faculty 人間科学部 \\
         --theme "少子高齢化と地域医療" --theme "AIと教育"
 
 流れ: ①ウェブ検索で試験条件・過去問を調べる → ②Claude が内容 JSON を書く
       → ③字数・項目をチェックし、ずれていれば直させる → ④render.py でスライド化
-出力: out/<大学>_<学部>/ に .pptx・内容 JSON・リサーチメモ を保存する。
-JSON を手で直したら `python3 shoronbun/render.py <json> <pptx>` で作り直せる。
+出力: ワークシート/<大学>_<学部>/ に .pptx・内容 JSON・リサーチメモ を保存する。
+JSON を手で直したら `python3 tools/render.py <json> <pptx>` で作り直せる。
 """
 import argparse
 import json
@@ -38,7 +38,8 @@ def parse_args(argv=None):
     ap.add_argument("--past-exam", action="append", default=[], help="過去問のテキストファイル（複数可）")
     ap.add_argument("--org", default="C3進学アカデミー", help="教材の発行元")
     ap.add_argument("--no-research", action="store_true", help="ウェブ検索をしない")
-    ap.add_argument("--out", default="out", help="出力先フォルダ")
+    ap.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "ワークシート"),
+                    help="出力先フォルダ（既定: このフォルダの ワークシート/）")
     ap.add_argument("--effort", default="high", choices=["low", "medium", "high", "xhigh", "max"])
     args = ap.parse_args(argv)
     args.count = max(args.count, len(args.theme), 1)

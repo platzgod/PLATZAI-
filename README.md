@@ -17,10 +17,9 @@ python3 builder/test_vba.py dist/合格一貫カリキュラム_マスターテ�
 - `builder/vbaproject.py` … VBA プロジェクト（MS-OVBA / CFB）の生成
 - `builder/package.py` … .xlsx → .xlsm への変換とボタンの追加
 
-## 小論文ワークシート自動作成
+## 小論文添削（ショー）
 
-大学名・テーマを入れると、東洋大学版と同じ形式の小論文ワークシート（.pptx）を作る。詳しくは [`shoronbun/README.md`](shoronbun/README.md)。
-
-```
-python3 shoronbun/generate.py --university 東洋大学 --faculty 食環境科学部 --theme "食品ロス"
-```
+`小論文添削（ショー）/` フォルダを Claude Code（または Claude デスクトップアプリ）で開き、
+チャットで「ショー、添削お願い」と言うと小論文の添削シート（.docx）を、
+「ショー、ワークシート作って」と言うと東洋大学版と同じ形式の小論文ワークシート（.pptx）を作る。
+使い方は [`小論文添削（ショー）/はじめにお読みください.md`](小論文添削（ショー）/はじめにお読みください.md)。

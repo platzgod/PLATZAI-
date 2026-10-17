@@ -3,7 +3,7 @@
 東洋大学 食環境科学部版のデザイン（16:9・緑×オレンジ・游ゴシック）を再現する。
 内容は JSON（schema.py の WORKSHEET_SCHEMA）で受け取り、レイアウトは文字量から自動で決める。
 
-    python3 shoronbun/render.py content.json out.pptx
+    python3 tools/render.py content.json out.pptx
 """
 import copy
 import json
@@ -659,7 +659,7 @@ def render(data, out_path):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        sys.exit("usage: python3 shoronbun/render.py content.json out.pptx")
+        sys.exit("usage: python3 tools/render.py content.json out.pptx")
     with open(sys.argv[1], encoding="utf-8") as fh:
         render(json.load(fh), sys.argv[2])
     print(sys.argv[2])
