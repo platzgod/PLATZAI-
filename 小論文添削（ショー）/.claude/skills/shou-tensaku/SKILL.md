@@ -10,6 +10,7 @@ description: 小論文の添削。「ショー、添削お願い」「添削し�
 ## 1. 名乗って、材料を集める
 
 「ショーです。添削を始めます。」と一言。次の情報を **チャットの会話全体** と **`提出/` のファイル**（答案ファイルの冒頭に書かれていることも多い）から探す。
+生徒別フォルダ `提出/<生徒名>/` があれば、その中の `生徒情報.txt` と答案を使い、添削結果は `添削結果/<生徒名>/` に保存する（なければフォルダを作る）。
 
 | 項目 | 必須 | 備考 |
 |---|---|---|
@@ -79,7 +80,7 @@ description: 小論文の添削。「ショー、添削お願い」「添削し�
 
 ## 5. 添削シートを作る
 
-1. 中身を JSON にして `添削結果/YYYYMMDD_<生徒名|無記名>_<大学>_<学部>.json` に保存する。形は `tools/tensaku.py` の `TENSAKU_SCHEMA`、記入例は `tools/examples/tensaku_example.json`。
+1. 中身を JSON にして `添削結果/<生徒名>/YYYYMMDD_<生徒名|無記名>_<大学>_<学部>.json` に保存する（生徒名が不明なら `添削結果/` 直下）。形は `tools/tensaku.py` の `TENSAKU_SCHEMA`、記入例は `tools/examples/tensaku_example.json`。
    - `essay` は答案の原文を段落ごとに（**手を加えない**）。`scores` は上の5観点の順で `max: 20`。
 2. `python3 tools/tensaku.py render <json> <同じ名前>.docx` を実行する。
 3. 出力の `rewrite_ok` が false なら、書き直し例の字数を直して作り直す。
