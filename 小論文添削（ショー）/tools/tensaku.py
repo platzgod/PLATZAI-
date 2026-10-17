@@ -80,7 +80,7 @@ def char_verdict(total, t):
     if total > t["chars_max"]:
         return f"字数オーバー（{total - t['chars_max']}字超過）。本番では減点・採点対象外になりうる"
     if total < int(t["chars_max"] * 0.9):
-        return f"9割（{int(t['chars_max'] * 0.9)}字）に届いていない" + ("・下限未満" if total < lo else "")
+        return f"9割（{int(t['chars_max'] * 0.9)}字）に届いていない" + ("・下限未満" if t["chars_min"] and total < lo else "")
     return "規定の範囲内"
 
 
