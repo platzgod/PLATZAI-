@@ -537,7 +537,9 @@ class Deck:
         paras = ans["paragraphs"]
         counts = [count_chars(p["text"]) for p in paras]
         total = sum(counts)
-        detail = "・".join(f"{p['label'].replace(' ', '')}{c}" for p, c in zip(paras, counts))
+        # ラベルに数字が入る（設問1 など）ときは、字数と混ざらないよう「：」で区切る
+        detail = "・".join(f"{p['label'].replace(' ', '')}{'：' if any(ch in '0123456789' for ch in p['label']) else ''}{c}"
+                          for p, c in zip(paras, counts))
         tw = 10.58
         box_h = 4.42
 
