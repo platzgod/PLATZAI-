@@ -33,7 +33,7 @@ python3 tools/generate.py --university 東洋大学 --faculty 食環境科学部
 | `--count` | テーマ数（既定 4） |
 | `--minutes` / `--chars` | 試験時間・字数が分かっていれば指定（例: `--minutes 60 --chars 600-800`） |
 | `--past-exam 過去問.txt` | 手元の過去問を渡すと、それを最優先でテーマにする（複数可） |
-| `--org` | 教材の発行元（既定: C3進学アカデミー） |
+| `--org` | 教材の発行元（既定: 個人指導塾PLATZ） |
 | `--no-research` | ウェブ検索をしない |
 
 出力は `ワークシート/<大学>_<学部>/` に `.pptx`・`content.json`・`research.md`。

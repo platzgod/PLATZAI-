@@ -62,7 +62,7 @@ WORKSHEET_SCHEMA = obj(
         faculty=S,                # 例: 食環境科学部
         admission=S,              # 例: 総合型選抜
         target=S,                 # 例: 対象：食環境科学部 フードデータサイエンス学科（第1部）自己推薦入試志願者
-        org=S,                    # 例: C3進学アカデミー
+        org=S,                    # 例: 個人指導塾PLATZ
         footer=S,                 # 空文字なら「{org}　{university} {faculty} 小論文ワークシート」
     ),
     exam=obj(

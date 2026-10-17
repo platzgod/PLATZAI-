@@ -36,7 +36,7 @@ def parse_args(argv=None):
     ap.add_argument("--minutes", type=int, help="試験時間（分）。分かっていれば指定")
     ap.add_argument("--chars", help="字数（例: 600-800 / 800）。分かっていれば指定")
     ap.add_argument("--past-exam", action="append", default=[], help="過去問のテキストファイル（複数可）")
-    ap.add_argument("--org", default="C3進学アカデミー", help="教材の発行元")
+    ap.add_argument("--org", default="個人指導塾PLATZ", help="教材の発行元")
     ap.add_argument("--no-research", action="store_true", help="ウェブ検索をしない")
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "ワークシート"),
                     help="出力先フォルダ（既定: このフォルダの ワークシート/）")
