@@ -147,7 +147,7 @@ def copy_cf(src, dst, rmap=lambda r: r, cmap=lambda c: c, keep=lambda rng: True)
 
 # ============================================================ Python 版の反映ロジック（初期表示用・VBA と同じ規則）
 def univ_table():
-    """大学名 -> (区分, 文系偏差値, 理系偏差値, 地域, 文系パターン, 理系パターン, 出典)"""
+    """大学名 -> (区分, 文系偏差値, 理系偏差値, 地域, 文系パターン, 理系パターン, 出典, 大学別の教材の型)"""
     return {u[0]: tuple(u[1:]) for u in D.university_master()}
 
 
@@ -173,8 +173,9 @@ def judge(inp, univ):
     pattern = pattern or default_pattern(kubun, bunri_in)
     system = G.system_of(pattern)
     tier = inp.get("tier") or "上段"
+    variant = u[7] if u else ""
     return dict(kubun=kubun, bunri=system[2:], system=system, target=target, pattern=pattern, tier=tier,
-                pre=tier, post=tier)
+                pre=tier, post=tier, variant=variant)
 
 
 def standard_checks(system):
@@ -209,7 +210,8 @@ def reflect(ws_plan, j, checks, subjects, db_index, school):
                 vals = []
                 for c in range(NPER):
                     lv = j["pre"] if c < D.SPLIT else j["post"]
-                    row = db_index.get((j["pattern"], subj, lv, kind))
+                    row = (db_index.get((j["pattern"] + D.VARIANT_SEP + j["variant"], subj, lv, kind)) if j["variant"] else None) \
+                        or db_index.get((j["pattern"], subj, lv, kind))
                     vals.append(row[c] if row else "")
                 c = 0
                 while c < NPER:
@@ -239,22 +241,30 @@ def reflect(ws_plan, j, checks, subjects, db_index, school):
 
 
 def materials_for(ws_plan, subjects):
-    keys = [m[0] for m in D.MATERIALS]
-    names = []
-    any_ky = any(v[1] == "○" for v in subjects.values())
+    """模試・自学 ② の教材（VBA の FillMaterials と同じ）：
+    科目ごとに【家】の帯から教材を拾い、各科目の1冊目 → 2冊目 … の順に最大 MAT_N-2 冊選んで、科目の順に並べる"""
+    keys = [m[0] for m in D.MATERIALS if m[0] not in ("共通テスト過去問", "過去問")]
+    per = []
     for s, subj in enumerate(D.SUBJECT_NAMES):
-        if subjects[subj][0] != "○":
-            continue
-        for c in range(2, 2 + NPER):
-            txt = ws_plan.cell(FIRST + s * BLOCK + 4, c).value or ""
-            if not txt:
-                continue
-            for key in keys:
-                if key in ("共通テスト過去問", "過去問"):
-                    continue
-                if key in txt and key not in names and len(names) < MAT_N - 2:
-                    names.append(key)
-    if any_ky:
+        found = []
+        if subjects[subj][0] == "○":
+            for c in range(2, 2 + NPER):
+                txt = ws_plan.cell(FIRST + s * BLOCK + 4, c).value or ""
+                for key in keys:
+                    if txt and key in txt and key not in found:
+                        found.append(key)
+        per.append(found)
+    chosen = set()
+    rnd = 0
+    while len(chosen) < MAT_N - 2 and any(rnd < len(f) for f in per):
+        for f in per:
+            if rnd < len(f) and f[rnd] not in chosen and len(chosen) < MAT_N - 2:
+                chosen.add(f[rnd])
+        rnd += 1
+    names = []
+    for f in per:
+        names += [k for k in f if k in chosen and k not in names]
+    if any(v[1] == "○" for v in subjects.values()):
         names.append("共通テスト過去問")
     names.append("過去問")
     return [next(m for m in D.MATERIALS if m[0] == n) for n in names]
@@ -579,7 +589,8 @@ def build_input(ws, name, s, checks):
          "志望校マスタの値（目安）。表示するだけ"),
         (R["memo"], "入試の目安", f'=IFERROR(VLOOKUP(B{R["system"]},系統メモ,2,FALSE),"")', ""),
         (R["pattern"], "講座ガイドの掲載頁",
-         f'=IFERROR("P"&INDEX(パターン頁,MATCH(B{lv},パターン一覧,0)),"（パターン一覧にありません）")&"・講座は"&B17',
+         f'=IFERROR("P"&INDEX(パターン頁,MATCH(B{lv},パターン一覧,0)),"（パターン一覧にありません）")&"・講座は"&B17'
+         f'&IF(K{R["pattern"]}="","","・教材は"&K{R["pattern"]}&"向けを一部使用")',
          "このページの講座・ユニットの並びどおりに管理表と配布用を作ります"),
     ]
     for r, label, f, note in calc:
@@ -604,6 +615,7 @@ def build_input(ws, name, s, checks):
         f"J{lv}": "=" + idx("志望校文系パターン"),
         f"K{lv}": "=" + idx("志望校理系パターン"),
         f"J{R['pattern']}": '=IF(B11="","志望校",B11)',
+        f"K{R['pattern']}": "=" + idx("志望校教材の型"),
     }
     for ref, f in helpers.items():
         ws[ref] = f
@@ -614,7 +626,7 @@ def build_input(ws, name, s, checks):
              "kBunri": "$K$14", "kCurrent": "$B$15", "kAutoApply": "$B$18",
              "kKubun": f"$B${R['kubun']}", "kSystem": f"$B${R['system']}", "kTarget": f"$B${R['target']}",
              "kLevel": f"$B${lv}", "kPatternKey": f"$B${lv}", "kTier": "$B$17", "kPreLevel": "$B$17", "kPostLevel": "$B$17",
-             "kPattern": f"$B${R['pattern']}", "kSchool": f"$J${R['pattern']}",
+             "kPattern": f"$B${R['pattern']}", "kSchool": f"$J${R['pattern']}", "kVariant": f"$K${R['pattern']}",
              "kItems": f"$A${CHK_FIRST}:$A${last_chk}", "kChecks": f"$B${CHK_FIRST}:$C${last_chk}"}
     for n, ref in names.items():
         name(n, f"'{INPUT}'!{ref}")
@@ -664,11 +676,11 @@ def build_masters(ws_univ, ws_mat, ws_course, ws_db, ws_ky, ws_pat, name, univ):
     build_patterns(ws_pat, name)
     # 志望校マスタ
     header_row(ws_univ, ["大学名", "区分", "文系の目標偏差値", "理系の目標偏差値", "文系パターン", "理系パターン", "地域",
-                         "パターンの根拠"], [28, 9, 11, 11, 24, 24, 8, 18])
-    for i, (u, (kb, b, r, area, pb, pr, src)) in enumerate(univ.items(), start=2):
-        for j, v in enumerate((u, kb, b, r, pb, pr, area, src), start=1):
+                         "パターンの根拠", "大学別の教材"], [28, 9, 11, 11, 24, 24, 8, 18, 10])
+    for i, (u, (kb, b, r, area, pb, pr, src, var)) in enumerate(univ.items(), start=2):
+        for j, v in enumerate((u, kb, b, r, pb, pr, area, src, var or None), start=1):
             ws_univ.cell(i, j, v)
-        body_font(ws_univ, i, 8)
+        body_font(ws_univ, i, 9)
         for j in (3, 4):
             ws_univ.cell(i, j).number_format = "0.0"
             ws_univ.cell(i, j).alignment = Alignment(horizontal="center")
@@ -677,24 +689,29 @@ def build_masters(ws_univ, ws_mat, ws_course, ws_db, ws_ky, ws_pat, name, univ):
             ws_univ.cell(i, j).fill = fill(YELLOW_IN)
         if src != "ガイド記載":
             ws_univ.cell(i, 8).font = font(9, True, "C81E1E")
+        if var:
+            ws_univ.cell(i, 9).font = font(9, True, NAVY)
     n_end = 400
     for i in range(len(univ) + 2, len(univ) + 12):
         for j in range(1, 7):
             ws_univ.cell(i, j).fill = fill(YELLOW_IN)
-    ws_univ["J1"] = ("※ 『文系パターン』『理系パターン』で、講座ガイド（2027年度 高校生ウイングネット 学習・講座ガイド P20〜47）の"
+    ws_univ["K1"] = ("※ 『文系パターン』『理系パターン』で、講座ガイド（2027年度 高校生ウイングネット 学習・講座ガイド P20〜47）の"
                      "どのカリキュラムで組むかが決まります。『ガイド記載』＝ガイドの志望大学の一覧に載っている大学。"
-                     "『偏差値から仮に設定』＝一覧にない大学なので、区分と目標偏差値（60以上＝難関）から仮に付けたもの。塾の判断で直してください。"
+                     "『塾で設定』＝一覧にない大学に塾の判断で付けたもの、『仮』＝区分と目標偏差値（60以上＝難関）から仮に付けたもの。"
+                     "空欄＝その系統の学部がない（もう一方のパターンを使う）。医学部・薬学部・農学部などは『〇〇大学（医学部）』の別の行。"
+                     "『大学別の教材』（京大・一橋）は、パターンの教材のうち一部の科目をその大学向けに差し替えます（カリキュラムDBの『パターン＠京大』などの行）。"
                      "偏差値は大手予備校の公表値を参考にした『おおよその目安』（参考表示のみ）。行を追加すればデータシートの選択肢に出ます（400行目まで）。")
-    ws_univ["J1"].font = font(9, color="C81E1E")
-    ws_univ["J1"].alignment = Alignment(wrap_text=True, vertical="top")
-    ws_univ.column_dimensions["J"].width = 50
+    ws_univ["K1"].font = font(9, color="C81E1E")
+    ws_univ["K1"].alignment = Alignment(wrap_text=True, vertical="top")
+    ws_univ.column_dimensions["K"].width = 50
     name("志望校リスト", f"'志望校マスタ'!$A$2:$A${n_end}")
     name("志望校区分", f"'志望校マスタ'!$B$2:$B${n_end}")
     name("志望校文系", f"'志望校マスタ'!$C$2:$C${n_end}")
     name("志望校理系", f"'志望校マスタ'!$D$2:$D${n_end}")
     name("志望校文系パターン", f"'志望校マスタ'!$E$2:$E${n_end}")
     name("志望校理系パターン", f"'志望校マスタ'!$F$2:$F${n_end}")
-    ws_univ.auto_filter.ref = f"A1:H{len(univ) + 1}"
+    name("志望校教材の型", f"'志望校マスタ'!$I$2:$I${n_end}")
+    ws_univ.auto_filter.ref = f"A1:I{len(univ) + 1}"
     dv = DataValidation(type="list", formula1='"国公立,私立"', allow_blank=True)
     ws_univ.add_data_validation(dv)
     dv.add(f"B2:B{n_end}")

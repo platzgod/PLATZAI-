@@ -76,6 +76,7 @@ KAI_SHORT_PRE = ["", "練成1", "練成2", "※", "※", "※", "※", "※", "�
 KAI_SHORT_POST = ["実戦1", "実戦2", "※", "※", "直前1", "※"]
 
 import json  # noqa: E402
+import re  # noqa: E402
 import os  # noqa: E402
 
 import guide_data as G  # noqa: E402
@@ -213,6 +214,20 @@ def build_db():
                     assert len(cells) == NPER
                     assert cells[SPLIT] != "←", (pt["name"], subj, tier, kind)
                     rows.append((pt["name"], subj, tier, kind, list(cells)))
+    # 大学別の差し替え（パターン＠型）：その科目の【塾】【家】だけ
+    for key, subs in PATTERN_MATERIALS.items():
+        if VARIANT_SEP not in key:
+            continue
+        assert key.split(VARIANT_SEP)[0] in PATTERN_NAMES, key
+        for subj, sel in subs.items():
+            juku, ie = [""] * NPER, [""] * NPER
+            for a, b, t in sel["juku"]:
+                _fill(juku, a, b, t)
+            for a, b, t in sel["ie"]:
+                _fill(ie, a, b, t)
+            for tier in G.TIERS:
+                rows.append((key, subj, tier, "塾", juku))
+                rows.append((key, subj, tier, "家", ie))
     return rows
 
 
@@ -258,6 +273,7 @@ def _load_materials():
 
 
 PATTERN_MATERIALS, _RESEARCHED = _load_materials()
+VARIANT_SEP = "＠"   # 「パターン＠大学別の型」
 
 # ---------------------------------------------------------------- 教材マスタ
 # (照合キー, 正式名（出版社）, 教科, 目標周回, 使い方, レベル, 区分)
@@ -378,6 +394,34 @@ SCHOOL_NOTES = {
 }
 
 
+SECTION_FACULTY = {"農学系": "農学部", "獣医系": "獣医学部", "医療系": "医療系学部"}
+
+# 名前に含まれていれば単科（その学部だけの大学）とみなす
+SINGLE_FACULTY = ("医科", "薬科", "医療", "獣医", "看護", "農業", "酪農", "歯科", "保健", "衛生", "薬学", "生命科学")
+
+# 大学別の教材の型（materials/variants.json の「パターン＠型」と対応）
+UNIV_VARIANT = {"京都大学": "京大", "一橋大学": "一橋"}
+
+# ガイドの志望大学一覧にない大学のパターン（文系, 理系）。None＝その系統の学部なし（もう一方を使う）
+PATTERN_FIX = {
+    "東京外国語大学": ("難関国公立大（文系）", None),
+    "電気通信大学": (None, "難関国公立大（理系）"),
+    "金沢大学": ("国公立大（文系）", "国公立大（理系）"),
+    "前橋工科大学": (None, "国公立大（理系）"),
+    "群馬県立女子大学": ("国公立大（文系）", None),
+    "群馬県立県民健康科学大学": (None, "国公立大（理系）"),
+    "国際基督教大学": ("最難関私立大（文系）", None),
+    "津田塾大学": ("有名私立大（文系）", "有名私立大（理工系）"),
+    "國學院大學": ("有名私立大（文系）", None),
+    "東京女子大学": ("有名私立大（文系）", "有名私立大（理工系）"),
+    "大東文化大学": ("有名私立大（文系）", None),
+    "亜細亜大学": ("有名私立大（文系）", None),
+    "千葉工業大学": (None, "有名私立大（理工系）"),
+    "高崎健康福祉大学": ("有名私立大（文系）", "有名私立大（農学系・獣医系・医療系）"),
+    "共愛学園前橋国際大学": ("有名私立大（文系）", None),
+}
+
+
 def _default_pattern(kubun, bunri, dev):
     if kubun == "国公立":
         return ("難関国公立大" if dev and dev >= 60 else "国公立大") + f"（{bunri}）"
@@ -387,7 +431,7 @@ def _default_pattern(kubun, bunri, dev):
 
 
 def university_master():
-    """[(大学名, 区分, 文系偏差値, 理系偏差値, 地域, 文系パターン, 理系パターン, 出典)]"""
+    """[(大学名, 区分, 文系偏差値, 理系偏差値, 地域, 文系パターン, 理系パターン, 出典, 大学別の教材の型)]"""
     base = {u[0]: dict(kubun=u[1], b=u[2], r=u[3], area=u[4], pb=None, pr=None, src="") for u in UNIVERSITIES}
     order = [u[0] for u in UNIVERSITIES]
     special = {"有名私立大（医学部）": "医学部", "有名私立大（薬学部）": "薬学部", "有名私立大（農学系・獣医系・医療系）": "農学・獣医・医療系"}
@@ -395,10 +439,16 @@ def university_master():
         bunri = "文系" if "文系" in pt["name"] else "理系"
         kubun = "国公立" if "国公立" in pt["name"] else "私立"
         col = "pb" if bunri == "文系" else "pr"
-        for name in G.university_names(pt["universities"]):
+        # 農学系・獣医系・医療系のページは【農学系】などの見出しごとに学部名を付ける
+        sections = [(special.get(pt["name"]), pt["universities"])]
+        if "【" in pt["universities"]:
+            sections = [(SECTION_FACULTY.get(h, h), t) for h, t in re.findall(r"【([^】]+)】([^【]*)", pt["universities"])]
+        names = [(fac, n) for fac, t in sections for n in G.university_names(t)]
+        for fac, name in names:
             key = name
-            if pt["name"] in special and key in base and base[key][col]:
-                key = f"{name}（{special[pt['name']]}）"
+            # 医学部・薬学部・農学系などの一覧は、単科大学（医科・薬科など）以外は「〇〇大学（医学部）」の別の行にする
+            if pt["name"] in special and not any(k in name for k in SINGLE_FACULTY):
+                key = f"{name}（{fac}）"
             if key not in base:
                 base[key] = dict(kubun=kubun, b=None, r=None, area="", pb=None, pr=None, src="")
                 order.append(key)
@@ -407,12 +457,24 @@ def university_master():
                 base[key]["src" + col] = True
     base["群馬大学（医学部医学科）"]["pr"] = "最難関国公立大（理系）"
     base["群馬大学（医学部医学科）"]["srcpr"] = True
+    for name, (pb, pr) in PATTERN_FIX.items():
+        base[name]["pb"], base[name]["pr"] = pb, pr
+        base[name]["fix"] = True
     out = []
     for name in order:
         d = base[name]
-        pb = d["pb"] or _default_pattern(d["kubun"], "文系", d["b"])
-        pr = d["pr"] or _default_pattern(d["kubun"], "理系", d["r"])
-        gb, gr = d.get("srcpb"), d.get("srcpr")
-        src = "ガイド記載" if gb and gr else "文系はガイド記載・理系は仮" if gb else "理系はガイド記載・文系は仮" if gr else "偏差値から仮に設定"
-        out.append((name, d["kubun"], d["b"], d["r"], d["area"], pb, pr, src))
+        has_b = bool(d["pb"]) or d["b"] is not None or not (d["pr"] or d["r"] is not None)
+        has_r = bool(d["pr"]) or d["r"] is not None or not (d["pb"] or d["b"] is not None)
+        pb = d["pb"] or (_default_pattern(d["kubun"], "文系", d["b"]) if has_b and not d.get("fix") else None)
+        pr = d["pr"] or (_default_pattern(d["kubun"], "理系", d["r"]) if has_r and not d.get("fix") else None)
+
+        def how(guide, val):
+            return "ガイド" if guide else ("—" if not val else "塾で設定" if d.get("fix") else "仮")
+        if d.get("fix"):
+            src = "塾で設定（ガイドの一覧にない）"
+        else:
+            src = f"文系：{how(d.get('srcpb'), pb)}／理系：{how(d.get('srcpr'), pr)}"
+            if d.get("srcpb") and d.get("srcpr") or (d.get("srcpb") and not pr) or (d.get("srcpr") and not pb):
+                src = "ガイド記載"
+        out.append((name, d["kubun"], d["b"], d["r"], d["area"], pb, pr, src, UNIV_VARIANT.get(name, "")))
     return out

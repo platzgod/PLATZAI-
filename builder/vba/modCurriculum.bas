@@ -100,7 +100,7 @@ End Function
 ' --- 本体
 Public Sub BuildCurriculum()
     Dim ws As Worksheet, db As Worksheet, st As Worksheet
-    Dim sysName As String, preLv As String, postLv As String, school As String
+    Dim sysName As String, preLv As String, postLv As String, school As String, alt As String
     Dim s As Long, r As Long, subj As String, lastRow As Long
     Dim prevEvents As Boolean
 
@@ -120,6 +120,8 @@ Public Sub BuildCurriculum()
     preLv = NV("kPreLevel")
     postLv = NV("kPostLevel")
     school = NV("kSchool")
+    alt = ""
+    If NV("kVariant") <> "" Then alt = sysName & ChrW(&HFF20) & NV("kVariant")
     lastRow = FIRST_ROW + NSUB * BLOCK - 1
 
     ' 1) 受験科目（○）は設定シートの数式がデータシートのチェックから自動で付ける
@@ -138,10 +140,10 @@ Public Sub BuildCurriculum()
         r = FIRST_ROW + s * BLOCK
         gStep = subj
         If st.Cells(SET_FIRST + s, 2).Value = "○" Then
-            WriteBand ws, db, r, sysName & "|" & subj, preLv, postLv, "講座", school, False
-            WriteBand ws, db, r + 1, sysName & "|" & subj, preLv, postLv, "回", school, False
-            WriteBand ws, db, r + 2, sysName & "|" & subj, preLv, postLv, "塾", school, True
-            WriteBand ws, db, r + 4, sysName & "|" & subj, preLv, postLv, "家", school, True
+            WriteBand ws, db, r, sysName & "|" & subj, alt, subj, preLv, postLv, "講座", school, False
+            WriteBand ws, db, r + 1, sysName & "|" & subj, alt, subj, preLv, postLv, "回", school, False
+            WriteBand ws, db, r + 2, sysName & "|" & subj, alt, subj, preLv, postLv, "塾", school, True
+            WriteBand ws, db, r + 4, sysName & "|" & subj, alt, subj, preLv, postLv, "家", school, True
         End If
         If st.Cells(SET_FIRST + s, 3).Value = "○" Then WriteKyote ws, r, subj
     Next s
@@ -169,7 +171,7 @@ End Sub
 
 ' 1行分（17期間）を前期・後期の2つのパターンから組み立てて書き込む
 '   withChecks = True なら、教材の帯の下の行に未チェックの印を置く
-Private Sub WriteBand(ws As Worksheet, db As Worksheet, r As Long, keyBase As String, _
+Private Sub WriteBand(ws As Worksheet, db As Worksheet, r As Long, keyBase As String, alt As String, subj As String, _
                       preLv As String, postLv As String, kind As String, school As String, withChecks As Boolean)
     Dim vals(1 To 17) As String, c As Long, m As Long, lv As String, v As String
     Dim startC As Long, endC As Long, k As Long
@@ -177,7 +179,10 @@ Private Sub WriteBand(ws As Worksheet, db As Worksheet, r As Long, keyBase As St
     For c = 1 To NPER
         If c <= SPLIT_AT Then lv = preLv Else lv = postLv
         If c = 1 Or c = SPLIT_AT + 1 Then
-            m = FindRow(db.Columns(1), keyBase & "|" & lv & "|" & kind)
+            m = 0
+            ' 大学別の差し替え（パターン＠型）があればそれを使う
+            If alt <> "" Then m = FindRow(db.Columns(1), alt & "|" & subj & "|" & lv & "|" & kind)
+            If m = 0 Then m = FindRow(db.Columns(1), keyBase & "|" & lv & "|" & kind)
         End If
         If m = 0 Then
             vals(c) = ""
@@ -282,19 +287,21 @@ Public Sub ClearChecks()
     If NV("kAutoApply") = "する" Then AutoApply
 End Sub
 
-' 模試・自学シート ② 家庭学習推奨教材：管理表の【家】の教材を教材マスタと照合して並べる
+' 模試・自学シート ② 家庭学習推奨教材：管理表の【家】の教材を教材マスタと照合し、
+'   各科目の1冊目 → 2冊目 … の順に最大 MAT_COUNT-2 冊を選んで、科目の順に並べる
 Private Sub FillMaterials()
     Dim ws As Worksheet, mk As Worksheet, ms As Worksheet, st As Worksheet
     Dim names(1 To 10) As String, n As Long, s As Long, c As Long, i As Long, j As Long
-    Dim txt As String, key As String, lastM As Long, dup As Boolean, anyKyote As Boolean
+    Dim found(0 To 11, 1 To 30) As String, cnt(0 To 11) As Long, chosen(1 To 10) As String, nc As Long
+    Dim txt As String, key As String, lastM As Long, dup As Boolean, anyKyote As Boolean, rd As Long, more As Boolean
     Set ws = ThisWorkbook.Worksheets(PLAN_SHEET)
     Set mk = ThisWorkbook.Worksheets("模試・自学")
     Set ms = ThisWorkbook.Worksheets("教材マスタ")
     Set st = ThisWorkbook.Worksheets("設定")
     lastM = Application.WorksheetFunction.CountA(ms.Columns(1))
-    n = 0
     anyKyote = False
     For s = 0 To NSUB - 1
+        cnt(s) = 0
         If st.Cells(SET_FIRST + s, 3).Value = "○" Then anyKyote = True
         If st.Cells(SET_FIRST + s, 2).Value = "○" Then
             For c = 2 To 1 + NPER
@@ -304,18 +311,55 @@ Private Sub FillMaterials()
                         key = CStr(ms.Cells(i, 1).Value)
                         If key <> "" And key <> "共通テスト過去問" And key <> "過去問" And InStr(txt, key) > 0 Then
                             dup = False
-                            For j = 1 To n
-                                If names(j) = key Then dup = True
+                            For j = 1 To cnt(s)
+                                If found(s, j) = key Then dup = True
                             Next j
-                            If Not dup And n < MAT_COUNT - 2 Then
-                                n = n + 1
-                                names(n) = key
+                            If Not dup And cnt(s) < 30 Then
+                                cnt(s) = cnt(s) + 1
+                                found(s, cnt(s)) = key
                             End If
                         End If
                     Next i
                 End If
             Next c
         End If
+    Next s
+    ' 各科目の1冊目、2冊目…の順に選ぶ
+    nc = 0
+    rd = 1
+    Do
+        more = False
+        For s = 0 To NSUB - 1
+            If rd <= cnt(s) Then
+                more = True
+                dup = False
+                For j = 1 To nc
+                    If chosen(j) = found(s, rd) Then dup = True
+                Next j
+                If Not dup And nc < MAT_COUNT - 2 Then
+                    nc = nc + 1
+                    chosen(nc) = found(s, rd)
+                End If
+            End If
+        Next s
+        rd = rd + 1
+    Loop While more And nc < MAT_COUNT - 2
+    ' 科目の順に並べる
+    n = 0
+    For s = 0 To NSUB - 1
+        For i = 1 To cnt(s)
+            dup = True
+            For j = 1 To nc
+                If chosen(j) = found(s, i) Then dup = False
+            Next j
+            For j = 1 To n
+                If names(j) = found(s, i) Then dup = True
+            Next j
+            If Not dup Then
+                n = n + 1
+                names(n) = found(s, i)
+            End If
+        Next i
     Next s
     If anyKyote Then
         n = n + 1
