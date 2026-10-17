@@ -84,7 +84,8 @@ description: 小論文の添削。「ショー、添削お願い」「添削し�
    - `essay` は答案の原文を段落ごとに（**手を加えない**）。`scores` は上の5観点の順で `max: 20`。
 2. `python3 tools/tensaku.py render <json> <同じ名前>.docx` を実行する。
 3. 出力の `rewrite_ok` が false なら、書き直し例の字数を直して作り直す。
-4. 可能なら PDF → 画像にして見た目を確認する（表の崩れ・はみ出し）。
+4. 印刷用に A4 の PDF も作り、同じ生徒フォルダの `印刷用/` に保存する（LibreOffice があれば `soffice --headless --convert-to pdf --outdir <生徒フォルダ>/印刷用 <docx>`。なければ Word で開いて PDF 保存するよう案内する）。
+5. 可能なら PDF → 画像にして見た目を確認する（表の崩れ・はみ出し）。
 
 ## 6. チャットで報告する
 
