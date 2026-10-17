@@ -308,7 +308,7 @@ def build(src_path, out_path, sample=None):
         wb.defined_names[n] = DefinedName(n, attr_text=ref)
 
     # ================================================================ 設定
-    build_settings(ws_set, old_set, name)
+    build_settings(ws_set, old_set, name, sample.get("year", 2027))
     # ================================================================ データシート
     j = judge(sample, univ)
     checks = sample.get("checks") or standard_checks(j["system"])
@@ -394,10 +394,10 @@ def build(src_path, out_path, sample=None):
 
 
 # ============================================================ 設定シート
-def build_settings(ws, old, name):
+def build_settings(ws, old, name, year=2027):
     copy_sheet(old, ws, keep_value=lambda r, c: r in (1, 2, 8, 9, 11, 12) or (r >= 13 and c == 1))
     lab, note = old["A1"]._style, old["C1"]._style
-    ws["B1"] = 2027
+    ws["B1"] = year
     ws["C1"] = "← 生徒の高3の年度（例：2027年度の高3なら 2027。開始は高2の1月＝2027年1月）"
     ws["B2"] = "=TODAY()"
     hdr_style, date_style = old["B4"]._style, old["B5"]._style
