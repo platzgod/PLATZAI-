@@ -29,6 +29,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Twips
 
+import desktop
 import note
 
 MINCHO = "游明朝"
@@ -358,6 +359,8 @@ def build(data, out_path):
     note.append(Path(out_path).parent, Path(out_path).stem.removesuffix("_添削完了"), "納品",
                 rank=(overall or {}).get("rank", ""), count=f"{len(spans)}件", notes="・".join(flags))
     print(f"保存しました: {out_path}（指摘 {len(spans)} 件）")
+    for copied in desktop.save(out_path):
+        print(f"デスクトップにも保存しました: {copied}")
 
 
 if __name__ == "__main__":
