@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 320">
+  <!-- platz.png が見つからないときに表示する仮のプラッツ君 -->
+  <ellipse cx="150" cy="300" rx="80" ry="10" fill="#000" opacity=".08"/>
+  <rect x="80" y="190" width="140" height="100" rx="40" fill="#ff8a1f"/>
+  <circle cx="150" cy="130" r="95" fill="#ffd9a8" stroke="#e06f00" stroke-width="6"/>
+  <path d="M60 110 Q150 10 240 110 Q200 70 150 72 Q100 70 60 110Z" fill="#5a3a1e"/>
+  <circle cx="115" cy="135" r="12" fill="#2b2b2b"/>
+  <circle cx="185" cy="135" r="12" fill="#2b2b2b"/>
+  <circle cx="119" cy="131" r="4" fill="#fff"/>
+  <circle cx="189" cy="131" r="4" fill="#fff"/>
+  <ellipse cx="95" cy="165" rx="14" ry="8" fill="#ff9e9e" opacity=".7"/>
+  <ellipse cx="205" cy="165" rx="14" ry="8" fill="#ff9e9e" opacity=".7"/>
+  <path d="M125 170 Q150 195 175 170" fill="none" stroke="#2b2b2b" stroke-width="6" stroke-linecap="round"/>
+  <text x="150" y="255" text-anchor="middle" font-size="28" font-weight="bold" fill="#fff" font-family="sans-serif">P</text>
+</svg>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>プラッツ君</title>
+  <link rel="stylesheet" href="/lib/katex/katex.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>プラッツ君に聞いてみよう</h1>
+    <div class="topbar-right">
+      <span id="turnCounter" class="turn-counter"></span>
+      <label class="toggle"><input type="checkbox" id="voiceToggle" checked> 声で読み上げ</label>
+      <button id="nextBtn" class="btn btn-next" type="button">次の問題へ ▶</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 左：プラッツ君 -->
+    <section class="stage">
+      <div class="bubble" id="statusBubble">分からない問題の写真を見せてね！</div>
+      <img id="platz" class="platz" src="platz.png" alt="プラッツ君"
+           onerror="this.onerror=null; this.src='platz-placeholder.svg';">
+      <div class="stage-buttons">
+        <button id="replayBtn" class="btn btn-sub" type="button" disabled>🔁 もう一度聞く</button>
+        <button id="stopBtn" class="btn btn-sub" type="button" disabled>⏹ 止める</button>
+      </div>
+    </section>
+
+    <!-- 右：会話 -->
+    <section class="chat">
+      <div id="log" class="log">
+        <div class="empty-hint" id="emptyHint">
+          <p>① 「📷 問題の写真」で写真やスクリーンショットを選ぶ<br>
+             （画面に貼り付け・ドラッグでもOK）</p>
+          <p>② 分からないところを文字か 🎤 で伝える</p>
+          <p>③ 「送る」を押すと、プラッツ君がヒントをくれるよ</p>
+        </div>
+      </div>
+
+      <div id="preview" class="preview" hidden>
+        <img id="previewImg" alt="選んだ問題の画像">
+        <button id="removeImg" class="btn-x" type="button" title="画像を外す">✕</button>
+      </div>
+
+      <form id="form" class="composer">
+        <label class="btn btn-photo" title="問題の写真を選ぶ">
+          📷 問題の写真
+          <input id="fileInput" type="file" accept="image/*" hidden>
+        </label>
+        <textarea id="input" rows="2" placeholder="どこが分からない？（例：(2)の解き方が分からない）"></textarea>
+        <button id="micBtn" class="btn btn-mic" type="button" title="声で入力">🎤</button>
+        <button id="sendBtn" class="btn btn-send" type="submit">送る</button>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

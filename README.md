@@ -19,3 +19,7 @@ python3 builder/test_vba.py dist/合格一貫カリキュラム_マスターテ�
 - `builder/vba/` … VBA ソース（vbaProject.bin はここから生成）
 - `builder/vbaproject.py` … VBA プロジェクト（MS-OVBA / CFB）の生成
 - `builder/package.py` … .xlsx → .xlsm への変換とボタンの追加
+
+## プラッツ君（質問対応AI デモ版）
+
+- `platzkun/` … 問題の写真を見て、ヒントを出しながら文字と音声で解説する Web アプリ。起動方法と使い方は [platzkun/README.md](platzkun/README.md)
