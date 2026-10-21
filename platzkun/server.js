@@ -8,6 +8,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SYSTEM_PROMPT } from "./prompt.js";
+import { streamDemoReply } from "./demo.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,13 +19,12 @@ const EFFORT = process.env.CLAUDE_EFFORT || "medium";
 // 1問あたりの最大往復数（生徒の発言の回数）
 const MAX_TURNS = 10;
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error("\n[エラー] ANTHROPIC_API_KEY が設定されていません。");
-  console.error("  .env.example をコピーして .env を作り、APIキーを書き込んでください。\n");
-  process.exit(1);
-}
+// お試しモード：APIキーが無いとき（または DEMO_MODE=true のとき）は Claude を呼ばず、
+// 用意した返事を返す。料金はかからないので、画面の動き・音声・やり取りの実験に使える
+const apiKey = process.env.ANTHROPIC_API_KEY || "";
+const DEMO = process.env.DEMO_MODE === "true" || !/^sk-ant-[\w-]{20,}$/.test(apiKey.trim());
 
-const client = new Anthropic();
+const client = DEMO ? null : new Anthropic();
 const app = express();
 
 // 画像（base64）を含むので、受け取れるサイズを大きめにしておく
@@ -38,7 +38,7 @@ app.use("/lib/marked", express.static(path.join(here, "node_modules/marked/lib")
 app.use("/lib/dompurify", express.static(path.join(here, "node_modules/dompurify/dist")));
 
 app.get("/api/config", (_req, res) => {
-  res.json({ maxTurns: MAX_TURNS });
+  res.json({ maxTurns: MAX_TURNS, demo: DEMO });
 });
 
 // 会話の受け口。返事は1行ずつの JSON（NDJSON）で少しずつ送り返す
@@ -61,6 +61,11 @@ app.post("/api/chat", async (req, res) => {
   res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
   const send = (obj) => res.write(JSON.stringify(obj) + "\n");
+
+  if (DEMO) {
+    await streamDemoReply(messages, send);
+    return res.end();
+  }
 
   try {
     const stream = client.beta.messages.stream({
@@ -110,5 +115,11 @@ app.post("/api/chat", async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\nプラッツ君が起動しました！ ブラウザで http://localhost:${PORT} を開いてください。`);
+  if (DEMO) {
+    console.log("いまは【お試しモード】です。Claude は使わず、用意した返事を返します（料金はかかりません）。");
+    console.log("本物の解説を使うときは、.env に APIキーを書いて DEMO_MODE=false にし、再起動してください。");
+  } else {
+    console.log(`Claude（${MODEL}）につないで解説します。`);
+  }
   console.log("（終わるときは、この画面で Ctrl + C を押します）\n");
 });

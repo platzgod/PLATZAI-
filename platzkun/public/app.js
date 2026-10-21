@@ -356,7 +356,10 @@ els.voiceToggle.addEventListener("change", () => {
 // ---------- はじめに ----------
 fetch("/api/config")
   .then((r) => r.json())
-  .then((c) => (maxTurns = c.maxTurns))
+  .then((c) => {
+    maxTurns = c.maxTurns;
+    if (c.demo) document.querySelector(".topbar h1").textContent += "（お試しモード）";
+  })
   .catch(() => {})
   .finally(updateTurns);
 updateTurns();

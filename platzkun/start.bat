@@ -2,9 +2,7 @@
 chcp 65001 > nul
 cd /d %~dp0
 if not exist .env (
-  echo [注意] .env ファイルがありません。.env.example をコピーして .env を作り、APIキーを書き込んでください。
-  pause
-  exit /b
+  echo .env ファイルがないので、お試しモード（料金なし）で起動します。
 )
 if not exist node_modules (
   echo はじめての起動なので、必要な部品をインストールします...

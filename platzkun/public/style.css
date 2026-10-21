@@ -1,14 +1,14 @@
 :root {
-  --bg: #fff8ef;
+  --bg: #f3f8ec;
   --panel: #ffffff;
   --ink: #2b2b2b;
-  --muted: #7a7266;
-  --accent: #ff8a1f;
-  --accent-dark: #e06f00;
-  --teal: #1fa5a0;
-  --line: #f0e1cc;
-  --me: #e6f6f5;
-  --platz: #fff3e3;
+  --muted: #6f7568;
+  --accent: #5e9f4f; /* プラッツ君の緑 */
+  --accent-dark: #437a37;
+  --teal: #e8893a; /* 写真ボタンは目立つようにオレンジ */
+  --line: #dde9d2;
+  --me: #fdf1e4;
+  --platz: #edf6e6;
   --danger: #d9534f;
 }
 
