@@ -1,0 +1,723 @@
+<title>プラッツ君</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=BIZ+UDPGothic:wght@400;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<style>
+/* Layout: 左にプラッツ君の「教壇」、右に方眼ノートの会話。狭い画面では上下に積む */
+:root {
+  --paper: #fbfcf8;      /* ノートの紙 */
+  --grid: #dfe8f1;       /* 方眼の線 */
+  --ink: #23301f;        /* 文字 */
+  --muted: #637060;      /* 補足の文字 */
+  --leaf: #4f8f41;       /* プラッツ君の緑（アクセント） */
+  --leaf-deep: #3a6d30;
+  --leaf-soft: #e7f2e1;  /* プラッツ君の吹き出し */
+  --pencil: #d9772b;     /* 写真ボタン（鉛筆のオレンジ） */
+  --me: #fff2e4;         /* 生徒の吹き出し */
+  --panel: #ffffff;
+  --line: #d6e2cf;
+  --warn-bg: #fdecea;
+  --warn: #b4382f;
+  --font-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", sans-serif;
+  --font-body: "BIZ UDPGothic", "Hiragino Sans", "Meiryo", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #171c16; --grid: #243026; --ink: #e8efe4; --muted: #a3b09e;
+    --leaf: #7cc16a; --leaf-deep: #9bd78a; --leaf-soft: #22301f; --pencil: #ec9150;
+    --me: #3a2a1c; --panel: #1f251d; --line: #34412f; --warn-bg: #3d2220; --warn: #ff9b90;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #171c16; --grid: #243026; --ink: #e8efe4; --muted: #a3b09e;
+  --leaf: #7cc16a; --leaf-deep: #9bd78a; --leaf-soft: #22301f; --pencil: #ec9150;
+  --me: #3a2a1c; --panel: #1f251d; --line: #34412f; --warn-bg: #3d2220; --warn: #ff9b90;
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  display: flex;
+  flex-direction: column;
+}
+.app {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(240px, 32%) 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 14px;
+  padding-block: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---- 上の帯 ---- */
+.top {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+}
+.top h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.45rem;
+  color: var(--leaf-deep);
+  text-wrap: balance;
+}
+.top-tools { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+.turns {
+  font-size: .9rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.turns b { color: var(--ink); font-size: 1.05rem; }
+.toggle { font-size: .9rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+
+button, .btn {
+  font: inherit;
+  font-weight: 700;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  padding: 9px 16px;
+  cursor: pointer;
+}
+button:focus-visible, .btn:focus-within, textarea:focus-visible { outline: 3px solid var(--pencil); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: default; }
+.btn-next { background: var(--leaf); color: var(--panel); }
+.btn-next.armed { background: var(--warn); }
+.btn-ghost { background: var(--panel); border-color: var(--line); color: var(--ink); font-size: .9rem; padding: 7px 12px; }
+
+/* ---- 教壇（プラッツ君） ---- */
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 0;
+}
+.say {
+  position: relative;
+  background: var(--panel);
+  border: 2px solid var(--leaf);
+  border-radius: 18px;
+  padding: 10px 16px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  text-align: center;
+  max-width: 100%;
+}
+.say::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  transform: translateX(-50%);
+  border: 10px solid transparent;
+  border-top-color: var(--leaf);
+  border-bottom: 0;
+}
+.platz { width: min(100%, 280px); max-height: 46vh; object-fit: contain; transform-origin: 50% 92%; }
+.platz.talking { animation: talk .5s ease-in-out infinite alternate; }
+.platz.thinking { animation: think 1.4s ease-in-out infinite; }
+@keyframes talk { from { transform: rotate(-3deg); } to { transform: rotate(3deg) scale(1.03); } }
+@keyframes think { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@media (prefers-reduced-motion: reduce) {
+  .platz.talking, .platz.thinking { animation: none; }
+}
+.stage-tools { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+/* ---- 方眼ノート（会話） ---- */
+.notebook {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--panel);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.notebook.drag { border-color: var(--pencil); border-style: dashed; }
+.log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.msg {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.msg.platz-msg { align-self: flex-start; background: var(--leaf-soft); border-bottom-left-radius: 4px; }
+.msg.me { align-self: flex-end; background: var(--me); border-bottom-right-radius: 4px; }
+.msg.note { align-self: center; background: var(--panel); border: 1px dashed var(--line); color: var(--muted); font-size: .9rem; }
+.msg.warn { align-self: center; background: var(--warn-bg); color: var(--warn); font-size: .95rem; }
+.who { font-family: var(--font-display); font-size: .8rem; font-weight: 700; color: var(--leaf-deep); }
+.msg img.thumb { display: block; max-width: min(240px, 100%); max-height: 180px; border-radius: 8px; margin-bottom: 6px; }
+.msg math[display="block"] { display: block; overflow-x: auto; margin: .35em 0; font-size: 1.15em; }
+.msg math { font-size: 1.08em; }
+.thinking-dots::after { content: "考え中"; color: var(--muted); animation: dots 1.2s steps(4) infinite; }
+@keyframes dots { 0% { content: "考え中"; } 25% { content: "考え中．"; } 50% { content: "考え中．．"; } 75% { content: "考え中．．．"; } }
+
+.preview { display: flex; align-items: center; gap: 10px; padding: 8px 16px 0; }
+.preview img { max-height: 90px; max-width: 200px; border-radius: 8px; border: 2px solid var(--pencil); }
+
+.composer {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  border-top: 2px solid var(--line);
+  background: var(--panel);
+  flex-wrap: wrap;
+}
+.composer textarea {
+  flex: 1 1 220px;
+  min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 9px 12px;
+  resize: none;
+}
+.btn-photo { background: var(--pencil); color: var(--panel); display: inline-flex; align-items: center; }
+.btn-mic { background: var(--panel); border-color: var(--line); font-size: 1.2rem; padding: 6px 12px; }
+.btn-mic.on { background: var(--warn); color: var(--panel); border-color: var(--warn); }
+.btn-send { background: var(--leaf); color: var(--panel); min-width: 84px; }
+.btn-stop { background: var(--panel); border-color: var(--warn); color: var(--warn); }
+
+[hidden] { display: none !important; }
+
+@media (max-width: 760px) {
+  html, body { height: auto; }
+  .app { display: flex; flex-direction: column; }
+  .notebook { height: 78vh; }
+  .stage { flex-direction: row; flex-wrap: wrap; }
+  .platz { width: 130px; }
+  .say { flex: 1 1 160px; }
+  .say::after { display: none; }
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1>プラッツ君に聞いてみよう</h1>
+    <div class="top-tools">
+      <span class="turns" id="turns"></span>
+      <label class="toggle"><input type="checkbox" id="voiceToggle" checked> 声で読み上げ</label>
+      <button id="nextBtn" class="btn-next" type="button">次の問題へ</button>
+    </div>
+  </header>
+
+  <section class="stage" aria-label="プラッツ君">
+    <div class="say" id="say" aria-live="polite">分からない問題の写真を見せてね！</div>
+    <img id="platz" class="platz" src="platz.png" alt="プラッツ君">
+    <div class="stage-tools">
+      <button id="replayBtn" class="btn-ghost" type="button" disabled>もう一度聞く</button>
+      <button id="hushBtn" class="btn-ghost" type="button" disabled>読み上げを止める</button>
+    </div>
+  </section>
+
+  <section class="notebook" id="notebook" aria-label="会話">
+    <div class="log" id="log">
+      <div class="msg platz-msg">
+        <div class="who">プラッツ君</div>
+        <div>やあ、ぼくはプラッツ君！ 分からない問題の<b>写真</b>を「問題の写真」から選んで、どこで困っているか教えてね。答えをすぐには言わないけど、ヒントを出しながら一緒に考えるよ。数学・英語・国語・理科・社会、どれでもOK！</div>
+      </div>
+    </div>
+    <div class="preview" id="preview" hidden>
+      <img id="previewImg" alt="選んだ問題の画像">
+      <button id="removeImg" class="btn-ghost" type="button">写真を外す</button>
+    </div>
+    <form class="composer" id="form">
+      <label class="btn btn-photo" for="fileInput">問題の写真</label>
+      <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+      <textarea id="input" rows="2" placeholder="どこが分からない？（例：(2)の解き方が分からない）"></textarea>
+      <button id="micBtn" class="btn-mic" type="button" title="声で入力" aria-label="声で入力">🎤</button>
+      <button id="sendBtn" class="btn-send" type="submit">送る</button>
+      <button id="stopBtn" class="btn-stop" type="button" hidden>止める</button>
+    </form>
+  </section>
+</div>
+
+<script>
+// =====================================================================
+// プラッツ君の解説ルール（Claude に毎回いちばん最初に渡す指示）
+// =====================================================================
+const RULES = `あなたは学習塾のキャラクター「プラッツ君」です。中学生〜高校生（主に高校生、難関大学の入試レベルまで）の生徒が、分からない問題の写真を見せて質問してきます。教科は数学・英語・国語・理科・社会のどれでもあります。問題の写真は、毎回の質問に添付されます。
+
+## 教え方
+- 目的は、生徒が自分の力で解けるようになることです。答えや完成した解き方をすぐに見せず、段階的にヒントを出して生徒に考えさせてください。
+- 1回の返事ではヒントを1つだけ出し、最後に生徒が考えるための短い問いかけをしてください。
+- ヒントは軽いもの（どこに注目するか・何を思い出すか）から始めて、生徒の反応を見ながら少しずつ具体的にしていきます。
+- 生徒の考えが合っていたらしっかりほめ、まちがっていたら、どこで迷ったかを一緒に確かめてください。
+- 生徒が「答えだけ教えて」と言っても、まずはヒントを出してください。何度かヒントを出したうえで、生徒が自分で考えた跡があり、それでも行き詰まっているときは、解き方の流れを一緒に確認しながら答えにたどり着いてかまいません。
+- 最初の返事では、写真の問題をどう読み取ったかを一言で伝えてください。写真が読み取れない・問題が複数あってどれか分からないときは、推測で進めずに生徒にたずねてください。
+
+## 話し方
+- 返事は画面に表示され、同時に音声で読み上げられます。一度に話す量は短く、2〜4文（長くても150字くらい）にしてください。
+- 中高生に分かりやすい、やさしくて親しみやすい言葉で話してください。一人称は「ぼく」です。難しい用語には、ひとことで意味をそえてください。
+- 見出しや箇条書きは使わず、話しかけるような文章にしてください。強調したい語は **太字** にしてかまいません。
+- 数式は必ず LaTeX で書き、文中は $...$ 、独立した式は $$...$$ で囲んでください。
+- 英語の問題では、英文や単語はそのまま英語で書いてかまいません。
+
+## 話題の範囲
+- 応じるのは、生徒が見せた問題（または入力した問題）と、それを解くために必要な学習内容だけです。
+- それ以外の話題には応じず、「ぼくはこの問題のお手伝い係なんだ。問題の話にもどろう！」のように、やさしく問題に話をもどしてください。新しい問題を聞きたいときは「次の問題へ」ボタンを押すよう案内してください。
+- まだ問題が見せられていないときは、問題の写真をアップロードするか、問題文を入力するよう案内してください。
+
+ここまでが指示です。このあとから生徒との会話が始まります。プラッツ君として返事だけを書いてください。`;
+
+const MAX_TURNS = 10;
+
+const VOICE_SETTINGS = {
+  lang: "ja-JP",
+  rate: 1.05,
+  pitch: 1.25,
+  preferredVoices: ["Google 日本語", "Nanami", "Kyoko", "Haruka", "Ayumi", "Otoya"],
+};
+
+// =====================================================================
+// 状態
+// =====================================================================
+const $ = (id) => document.getElementById(id);
+const els = {
+  log: $("log"), form: $("form"), input: $("input"), fileInput: $("fileInput"),
+  preview: $("preview"), previewImg: $("previewImg"), removeImg: $("removeImg"),
+  micBtn: $("micBtn"), sendBtn: $("sendBtn"), stopBtn: $("stopBtn"), nextBtn: $("nextBtn"),
+  replayBtn: $("replayBtn"), hushBtn: $("hushBtn"), voiceToggle: $("voiceToggle"),
+  platz: $("platz"), say: $("say"), turns: $("turns"), notebook: $("notebook"),
+};
+
+let sample = null;          // Claude に聞くための関数（使えないときは null）
+let canSendImages = false;
+let ready = false;          // Claude の準備ができたか
+let turns = [];             // これまでの会話 [{role, content}]
+let problemImage = null;    // この問題の画像（毎回いっしょに送る）
+let pendingImage = null;    // まだ送っていない画像
+let busy = false;
+let ctl = null;
+let lastSpoken = "";
+
+const userTurns = () => turns.filter((t) => t.role === "user").length;
+const left = () => MAX_TURNS - userTurns();
+
+function setMood(mood, text) {
+  els.platz.classList.toggle("talking", mood === "talking");
+  els.platz.classList.toggle("thinking", mood === "thinking");
+  if (text) els.say.textContent = text;
+}
+
+function refresh() {
+  els.turns.innerHTML = `この問題で あと <b>${left()}</b> 回 質問できるよ`;
+  const locked = busy || left() <= 0 || !ready;
+  els.sendBtn.disabled = locked;
+  els.sendBtn.hidden = busy;
+  els.stopBtn.hidden = !busy;
+  els.input.disabled = left() <= 0;
+  els.micBtn.disabled = locked || !recognizer;
+}
+
+// =====================================================================
+// 表示（**太字** と 数式。数式はブラウザ標準の MathML で描く）
+// =====================================================================
+const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function mathHtml(tex, display) {
+  if (!window.katex) return esc(display ? `$$${tex}$$` : `$${tex}$`);
+  try {
+    return katex.renderToString(tex, { displayMode: display, output: "mathml", throwOnError: false });
+  } catch {
+    return esc(tex);
+  }
+}
+function renderRich(el, text) {
+  el.innerHTML = text
+    .replace(/\\\[([\s\S]+?)\\\]/g, "$$$$$1$$$$")
+    .replace(/\\\(([\s\S]+?)\\\)/g, "$$$1$$")
+    .replace(/\n?(\$\$[\s\S]+?\$\$)\n?/g, "$1")
+    .split(/(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g)
+    .map((part) => {
+      if (part.length > 4 && part.startsWith("$$") && part.endsWith("$$")) return mathHtml(part.slice(2, -2), true);
+      if (part.length > 2 && part.startsWith("$") && part.endsWith("$")) return mathHtml(part.slice(1, -1), false);
+      return esc(part).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+    })
+    .join("");
+}
+
+function bubble(kind, { text = "", image = null } = {}) {
+  const div = document.createElement("div");
+  div.className = `msg ${kind}`;
+  if (kind === "platz-msg") {
+    const who = document.createElement("div");
+    who.className = "who";
+    who.textContent = "プラッツ君";
+    div.append(who);
+  }
+  if (image) {
+    const img = document.createElement("img");
+    img.className = "thumb";
+    img.alt = "送った問題の画像";
+    img.src = URL.createObjectURL(image);
+    div.append(img);
+  }
+  const body = document.createElement("div");
+  body.textContent = text;
+  div.append(body);
+  els.log.append(div);
+  els.log.scrollTop = els.log.scrollHeight;
+  return body;
+}
+
+// =====================================================================
+// 読み上げ
+// =====================================================================
+const speaker = {
+  voice: null, session: 0, onEnd: null,
+  ok: "speechSynthesis" in window,
+  pick() {
+    const voices = speechSynthesis.getVoices().filter((v) => v.lang.replace("_", "-").startsWith("ja"));
+    for (const n of VOICE_SETTINGS.preferredVoices) {
+      const v = voices.find((x) => x.name.includes(n));
+      if (v) return (this.voice = v);
+    }
+    this.voice = voices[0] || null;
+  },
+  speak(text, { onStart, onEnd } = {}) {
+    this.stop();
+    if (!this.ok) return onEnd && onEnd();
+    const session = ++this.session;
+    const parts = (text.match(/[^。！？!?\n]+[。！？!?]*/g) || []).map((s) => s.trim()).filter(Boolean);
+    if (!parts.length) return onEnd && onEnd();
+    this.onEnd = onEnd;
+    onStart && onStart();
+    parts.forEach((p, i) => {
+      const u = new SpeechSynthesisUtterance(p);
+      u.lang = VOICE_SETTINGS.lang;
+      u.rate = VOICE_SETTINGS.rate;
+      u.pitch = VOICE_SETTINGS.pitch;
+      if (this.voice) u.voice = this.voice;
+      if (i === parts.length - 1) u.onend = u.onerror = () => { if (session === this.session) this.finish(); };
+      speechSynthesis.speak(u);
+    });
+  },
+  stop() {
+    if (!this.ok) return;
+    this.session++;
+    speechSynthesis.cancel();
+    this.finish();
+  },
+  finish() {
+    const cb = this.onEnd;
+    this.onEnd = null;
+    cb && cb();
+  },
+};
+if (speaker.ok) {
+  speaker.pick();
+  speechSynthesis.addEventListener("voiceschanged", () => speaker.pick());
+}
+
+const WORDS = {
+  "\\times": " かける ", "\\div": " わる ", "\\cdot": " かける ", "\\pm": " プラスマイナス ",
+  "\\leqq": " 小なりイコール ", "\\geqq": " 大なりイコール ", "\\leq": " 小なりイコール ",
+  "\\geq": " 大なりイコール ", "\\le": " 小なりイコール ", "\\ge": " 大なりイコール ",
+  "\\neq": " ノットイコール ", "\\approx": " ニアリーイコール ", "\\infty": "無限大",
+  "\\pi": "パイ", "\\theta": "シータ", "\\alpha": "アルファ", "\\beta": "ベータ",
+  "\\sin": "サイン", "\\cos": "コサイン", "\\tan": "タンジェント", "\\log": "ログ",
+  "\\lim": "リミット", "\\sum": "シグマ", "\\int": "インテグラル", "\\angle": "角",
+  "\\triangle": "三角形", "\\Rightarrow": " ならば ", "\\circ": "度",
+};
+function mathToSpeech(tex) {
+  let s = tex;
+  for (let i = 0; i < 5; i++) {
+    s = s
+      .replace(/\\[dt]?frac\{([^{}]*)\}\{([^{}]*)\}/g, " $2 分の $1 ")
+      .replace(/\\sqrt\{([^{}]*)\}/g, " ルート $1 ")
+      .replace(/\^\{?\\circ\}?/g, "度")
+      .replace(/\\(int|sum)_\{?([^{}^\s]+)\}?\^\{?([^{}\s]+)\}?/g, " \\$1 $2 から $3 まで ")
+      .replace(/\^\{2\}|\^2/g, " の2乗 ")
+      .replace(/\^\{3\}|\^3/g, " の3乗 ")
+      .replace(/\^\{([^{}]*)\}/g, " の $1 乗 ")
+      .replace(/\^(\w)/g, " の $1 乗 ")
+      .replace(/\\(?:text|mathrm|mathbf|vec|overline)\{([^{}]*)\}/g, " $1 ");
+  }
+  for (const k of Object.keys(WORDS).sort((a, b) => b.length - a.length)) s = s.split(k).join(WORDS[k]);
+  return s
+    .replace(/\\left|\\right|\\,|\\;|\\!|\\quad|\\ /g, " ")
+    .replace(/_\{([^{}]*)\}|_(\w)/g, " $1$2 ")
+    .replace(/\\[a-zA-Z]+/g, " ")
+    .replace(/[{}]/g, " ")
+    .replace(/</g, " 小なり ").replace(/>/g, " 大なり ")
+    .replace(/=/g, " イコール ").replace(/\+/g, " プラス ").replace(/[-−]/g, " マイナス ")
+    .replace(/\s+/g, " ").trim();
+}
+function toSpeech(text) {
+  return text
+    .replace(/\$\$([\s\S]+?)\$\$/g, (_, t) => ` ${mathToSpeech(t)} 。`)
+    .replace(/\$([^$\n]+?)\$/g, (_, t) => ` ${mathToSpeech(t)} `)
+    .replace(/[*_`#>]/g, "")
+    .trim();
+}
+
+function speak(text) {
+  lastSpoken = text;
+  els.replayBtn.disabled = !text;
+  if (!els.voiceToggle.checked || !text) return setMood("idle", "考えたことを教えてね！");
+  speaker.speak(toSpeech(text), {
+    onStart: () => { setMood("talking", "おはなし中…"); els.hushBtn.disabled = false; },
+    onEnd: () => {
+      setMood("idle", left() > 0 ? "考えたことを教えてね！" : "よくがんばったね！");
+      els.hushBtn.disabled = true;
+    },
+  });
+}
+
+// =====================================================================
+// 音声入力（この画面ではマイクが使えないことがある）
+// =====================================================================
+let recognizer = null;
+let listening = false;
+let before = "";
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+  recognizer = new SR();
+  recognizer.lang = "ja-JP";
+  recognizer.interimResults = true;
+  recognizer.onresult = (e) => {
+    let t = "";
+    for (const r of e.results) t += r[0].transcript;
+    els.input.value = (before ? before + " " : "") + t;
+  };
+  recognizer.onstart = () => {
+    listening = true;
+    els.micBtn.classList.add("on");
+    setMood("idle", "聞いてるよ…話し終わったら、もう一度🎤を押してね");
+  };
+  recognizer.onend = () => {
+    listening = false;
+    els.micBtn.classList.remove("on");
+  };
+  recognizer.onerror = (e) => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "network") {
+      recognizer = null;
+      els.micBtn.hidden = true;
+      bubble("note", { text: "この画面ではマイクが使えないみたい。質問は文字で入力してね。（音声入力は、パソコンで直接開くお試し版で試せます）" });
+      refresh();
+    }
+  };
+} else {
+  els.micBtn.hidden = true;
+}
+els.micBtn.addEventListener("click", () => {
+  if (!recognizer) return;
+  if (listening) return recognizer.stop();
+  speaker.stop();
+  before = els.input.value.trim();
+  try { recognizer.start(); } catch { /* すでに起動中 */ }
+});
+
+// =====================================================================
+// 画像
+// =====================================================================
+function takeImage(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  if (!canSendImages) {
+    bubble("warn", { text: "この画面では写真を送れません。問題文を文字で入力してね。" });
+    return;
+  }
+  pendingImage = file;
+  els.previewImg.src = URL.createObjectURL(file);
+  els.preview.hidden = false;
+  setMood("idle", "写真を受け取ったよ！どこが分からないか教えてね。");
+  els.input.focus();
+}
+function dropImage() {
+  pendingImage = null;
+  els.preview.hidden = true;
+  els.previewImg.removeAttribute("src");
+  els.fileInput.value = "";
+}
+els.fileInput.addEventListener("change", () => takeImage(els.fileInput.files[0]));
+els.removeImg.addEventListener("click", dropImage);
+document.addEventListener("paste", (e) => {
+  const item = [...(e.clipboardData ? e.clipboardData.items : [])].find((i) => i.type.startsWith("image/"));
+  if (item) { e.preventDefault(); takeImage(item.getAsFile()); }
+});
+els.notebook.addEventListener("dragover", (e) => { e.preventDefault(); els.notebook.classList.add("drag"); });
+els.notebook.addEventListener("dragleave", () => els.notebook.classList.remove("drag"));
+els.notebook.addEventListener("drop", (e) => {
+  e.preventDefault();
+  els.notebook.classList.remove("drag");
+  takeImage(e.dataTransfer.files[0]);
+});
+
+// =====================================================================
+// 送信 → Claude に聞く
+// =====================================================================
+const ERRORS = {
+  not_granted: "プラッツ君が Claude を使うことが許可されていません。ページを開き直して「許可」を選んでください。",
+  sampling_disabled: "このアカウントでは Claude を使えません。",
+  rate_limited: "今は使える回数の上限に来ています。しばらく待ってから、もう一度送ってね。",
+  session_expired: "ログインが切れました。claude.ai にログインし直してください。",
+  image_rejected: "この写真は送れませんでした。別の写真（JPEG か PNG）でためしてね。",
+  images_unavailable: "この画面では写真を送れません。問題文を文字で入力してね。",
+  refused: "ごめんね、この内容にはお答えできません。問題について聞いてみてね。",
+  empty_completion: "うまく返事が作れませんでした。聞き方を少し変えて、もう一度送ってね。",
+  prompt_too_large: "会話が長くなりすぎました。「次の問題へ」を押して、新しく始めてね。",
+};
+
+els.input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    els.form.requestSubmit();
+  }
+});
+
+els.form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (busy || left() <= 0 || !ready) return;
+  const text = els.input.value.trim();
+  if (!text && !pendingImage) return setMood("idle", "問題の写真か、質問を入れてね！");
+
+  if (listening) recognizer.stop();
+  speaker.stop();
+
+  const img = pendingImage;
+  if (img) problemImage = img; // この問題の写真として、以後のやり取りでも毎回送る
+  const content = text || "この問題が分かりません。教えてください。";
+  turns.push({ role: "user", content });
+  bubble("me", { text: text || "この問題を教えて！", image: img });
+  els.input.value = "";
+  dropImage();
+
+  busy = true;
+  refresh();
+  setMood("thinking", "うーん、考え中…");
+  const body = bubble("platz-msg");
+  body.classList.add("thinking-dots");
+  ctl = new AbortController();
+
+  const options = {
+    cache: false,
+    signal: ctl.signal,
+    onText: ({ text: t }) => {
+      body.classList.remove("thinking-dots");
+      setMood("thinking", "書いてるよ…");
+      renderRich(body, t);
+      els.log.scrollTop = els.log.scrollHeight;
+    },
+  };
+  if (problemImage) options.images = [problemImage];
+
+  try {
+    const { text: answer, truncated } = await sample([{ role: "user", content: RULES }, ...turns], options);
+    renderRich(body, answer);
+    turns.push({ role: "assistant", content: answer });
+    if (truncated) bubble("note", { text: "返事が途中で切れました。続きは「続きを教えて」と送ってね。" });
+    if (left() <= 0) bubble("note", { text: `この問題のやり取りは${MAX_TURNS}回までだよ。「次の問題へ」を押してね。` });
+    speak(answer);
+  } catch (err) {
+    turns.pop(); // 失敗した質問は数えない
+    const partial = err && err.code !== "refused" ? err.text : "";
+    if (partial) {
+      renderRich(body, partial);
+    } else {
+      body.closest(".msg").remove();
+    }
+    if (!err || err.code !== "cancelled") {
+      bubble("warn", { text: ERRORS[err && err.code] || "通信がうまくいきませんでした。少し待ってから、もう一度送ってね。" });
+      if (!partial) els.input.value = text;
+      if (err && (err.code === "not_granted" || err.code === "sampling_disabled")) ready = false;
+    }
+    setMood("idle", "ごめんね、うまくいかなかったみたい。");
+  } finally {
+    busy = false;
+    ctl = null;
+    refresh();
+  }
+});
+
+els.stopBtn.addEventListener("click", () => ctl && ctl.abort());
+
+// =====================================================================
+// ボタン
+// =====================================================================
+let armTimer = null;
+els.nextBtn.addEventListener("click", () => {
+  // 会話があるときは、2回押して確定（うっかり消さないように）
+  if (turns.length && !els.nextBtn.classList.contains("armed")) {
+    els.nextBtn.classList.add("armed");
+    els.nextBtn.textContent = "もう一度押すと会話を消します";
+    clearTimeout(armTimer);
+    armTimer = setTimeout(() => {
+      els.nextBtn.classList.remove("armed");
+      els.nextBtn.textContent = "次の問題へ";
+    }, 3000);
+    return;
+  }
+  clearTimeout(armTimer);
+  els.nextBtn.classList.remove("armed");
+  els.nextBtn.textContent = "次の問題へ";
+  if (ctl) ctl.abort();
+  speaker.stop();
+  if (listening) recognizer.stop();
+  turns = [];
+  problemImage = null;
+  lastSpoken = "";
+  dropImage();
+  els.input.value = "";
+  [...els.log.querySelectorAll(".msg")].slice(1).forEach((m) => m.remove());
+  els.replayBtn.disabled = true;
+  setMood("idle", "次の問題の写真を見せてね！");
+  refresh();
+});
+els.replayBtn.addEventListener("click", () => speak(lastSpoken));
+els.hushBtn.addEventListener("click", () => speaker.stop());
+els.voiceToggle.addEventListener("change", () => { if (!els.voiceToggle.checked) speaker.stop(); });
+
+// =====================================================================
+// はじめに：Claude が使えるか確かめる
+// =====================================================================
+refresh();
+(async () => {
+  sample = window.claude ? await window.claude.use("sample") : null;
+  if (!sample) {
+    bubble("warn", { text: "この画面では Claude につながりません。claude.ai でこのページを開いてください。" });
+    setMood("idle", "claude.ai で開いてね");
+    return;
+  }
+  const limits = await sample.limits().catch(() => null);
+  canSendImages = Boolean(limits && limits.images);
+  if (!canSendImages) {
+    els.fileInput.disabled = true;
+    document.querySelector(".btn-photo").hidden = true;
+    bubble("note", { text: "この画面では写真を送れないので、問題文を文字で入力してね。" });
+  }
+  ready = true;
+  refresh();
+})();
+</script>

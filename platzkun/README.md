@@ -32,6 +32,13 @@ APIキーはサーバーの中だけで使うので、ブラウザ側には出�
 使っている技術：Node.js / Express / Claude API（`claude-opus-5-5`、画像対応）/
 Web Speech API（音声入力）/ speechSynthesis（読み上げ）/ KaTeX / marked
 
+## claude.ai 版（APIキー不要で本当に答える）
+
+`artifact/platzkun-artifact.html` は claude.ai 上で動く版です（公開先：https://claude.ai/artifact/EWJzJUNiXLw86KayVFMY1N ）。
+APIキーは使わず、ページを開いた人の claude.ai アカウントで Claude が答えます（その人のプランの利用枠を使います）。
+初めて質問するときに「Claude の利用を許可しますか」と聞かれるので、許可してください。
+この画面ではマイクが使えないことがあり、そのときは文字で質問します。
+
 ## いちばん簡単なお試し版：`platzkun-demo.html`（インストール不要）
 
 `platzkun-demo.html` を **ダブルクリックして Chrome か Edge で開くだけ** で動きます。
