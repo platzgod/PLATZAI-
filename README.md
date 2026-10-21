@@ -23,3 +23,4 @@ python3 builder/test_vba.py dist/合格一貫カリキュラム_マスターテ�
 ## プラッツ君（質問対応AI デモ版）
 
 - `platzkun/` … 問題の写真を見て、ヒントを出しながら文字と音声で解説する Web アプリ。起動方法と使い方は [platzkun/README.md](platzkun/README.md)
+- `platzkun/platzkun-demo.html` … インストール不要のお試し版（ダブルクリックで開くだけ。Claude は使わず料金なし）
