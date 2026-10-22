@@ -631,7 +631,7 @@ def build_input(ws, name, s, checks):
     for n, ref in names.items():
         name(n, f"'{INPUT}'!{ref}")
     name("kAutoInputs", f"'{INPUT}'!$B$11,'{INPUT}'!$B$14,'{INPUT}'!$B$16,'{INPUT}'!$B$17")
-    lists = [("B7", '"高2,高3,既卒"'), ("B14", '"文系,理系"'), ("B16", "=パターン一覧"),
+    lists = [("B7", '"高1,高2,高3,既卒"'), ("B14", '"文系,理系"'), ("B16", "=パターン一覧"),
              ("B17", '"上段,下段"'), ("B18", '"する,しない"'), ("B11:B13", "=志望校リスト")]
     for ref, f in lists:
         dv = DataValidation(type="list", formula1=f, allow_blank=True)
