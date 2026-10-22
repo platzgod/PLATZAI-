@@ -9,25 +9,44 @@
 </head>
 <body>
   <header class="topbar">
-    <h1>プラッツ君に聞いてみよう</h1>
+    <h1 id="title">プラッツ君に聞いてみよう</h1>
     <div class="topbar-right">
       <span id="turnCounter" class="turn-counter"></span>
       <label class="toggle"><input type="checkbox" id="voiceToggle" checked> 声で読み上げ</label>
+      <label class="toggle" title="プラッツ君が話し終わると、自動でマイクが聞き取りを始めます">
+        <input type="checkbox" id="talkToggle"> 会話モード
+      </label>
       <button id="nextBtn" class="btn btn-next" type="button">次の問題へ ▶</button>
     </div>
   </header>
 
   <main class="layout">
-    <!-- 左：プラッツ君 -->
-    <section class="stage">
-      <div class="bubble" id="statusBubble">分からない問題の写真を見せてね！</div>
-      <img id="platz" class="platz" src="platz.png" alt="プラッツ君"
-           onerror="this.onerror=null; this.src='platz-placeholder.svg';">
-      <div class="stage-buttons">
-        <button id="replayBtn" class="btn btn-sub" type="button" disabled>🔁 もう一度聞く</button>
-        <button id="stopBtn" class="btn btn-sub" type="button" disabled>⏹ 止める</button>
-      </div>
-    </section>
+    <!-- 左：プラッツ君と、問題の写真（大きく表示して、話している場所に枠） -->
+    <div class="left" id="left">
+      <section class="stage">
+        <div class="bubble" id="statusBubble">分からない問題の写真を見せてね！</div>
+        <img id="platz" class="platz" src="platz.png" alt="プラッツ君"
+             onerror="this.onerror=null; this.src='platz-placeholder.svg';">
+        <div class="stage-buttons">
+          <button id="replayBtn" class="btn btn-sub" type="button" disabled>🔁 もう一度聞く</button>
+          <button id="stopBtn" class="btn btn-sub" type="button" disabled>⏹ 止める</button>
+        </div>
+      </section>
+
+      <section class="board" id="board" hidden>
+        <div class="board-view" id="boardView">
+          <div class="frame" id="frame"><img id="boardImg" alt="いま考えている問題"></div>
+        </div>
+        <div class="board-bar">
+          <span class="key"><i></i>オレンジの枠が、いま話している場所</span>
+          <span class="board-btns">
+            <button id="zoomBtn" class="btn btn-sub" type="button" disabled>枠の所を拡大</button>
+            <button id="clearMarkBtn" class="btn btn-sub" type="button" disabled>枠を消す</button>
+          </span>
+        </div>
+      </section>
+      <p class="credit" id="voiceCredit"></p>
+    </div>
 
     <!-- 右：会話 -->
     <section class="chat">
@@ -37,6 +56,8 @@
              （画面に貼り付け・ドラッグでもOK）</p>
           <p>② 分からないところを文字か 🎤 で伝える</p>
           <p>③ 「送る」を押すと、プラッツ君がヒントをくれるよ</p>
+          <p>「会話モード」にすると、声だけでやり取りできるよ</p>
+          <p><button id="sampleBtn" class="btn btn-sample" type="button">例題でためしてみる</button></p>
         </div>
       </div>
 

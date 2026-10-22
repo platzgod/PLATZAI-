@@ -10,6 +10,7 @@
   --me: #fdf1e4;
   --platz: #edf6e6;
   --danger: #d9534f;
+  --hl: rgba(255, 205, 40, .30); /* 蛍光ペンの黄色 */
 }
 
 * { box-sizing: border-box; }
@@ -66,7 +67,7 @@ body {
 .layout {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(260px, 34%) 1fr;
+  grid-template-columns: minmax(0, 1.1fr) minmax(340px, 1fr);
   gap: 16px;
   padding: 16px;
   min-height: 0;
@@ -128,6 +129,52 @@ body {
   0%, 100% { box-shadow: 0 0 0 0 rgba(217,83,79,.5); }
   50%      { box-shadow: 0 0 0 8px rgba(217,83,79,0); }
 }
+
+/* ---------- 左の列：問題が来たら、プラッツ君は小さく上に、問題の写真を大きく ---------- */
+.left { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+.left .stage { flex: 1; }
+.left.has-problem .stage { flex: 0 0 auto; flex-direction: row; justify-content: flex-start; padding: 10px 16px; }
+.left.has-problem .platz { order: -1; width: 100px; }
+.left.has-problem .bubble { flex: 1; text-align: left; }
+.left.has-problem .bubble::after {
+  left: -12px; top: 50%; bottom: auto; transform: translateY(-50%);
+  border: 10px solid transparent; border-right-color: var(--accent); border-left: 0;
+}
+.left.has-problem .stage-buttons { flex-direction: column; }
+.board {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  background: var(--panel); border-radius: 20px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+.board-view {
+  flex: 1; min-height: 0; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; padding: 10px;
+}
+.frame { position: relative; transition: transform .45s ease; }
+.frame img { display: block; width: 100%; height: 100%; border-radius: 6px; }
+.mark {
+  position: absolute; border: 3px solid var(--teal); background: var(--hl);
+  border-radius: 6px; animation: pop .5s ease-out; pointer-events: none;
+}
+.mark span {
+  position: absolute; left: -3px; bottom: 100%; margin-bottom: 2px;
+  background: var(--teal); color: #fff; font-size: 13px; font-weight: bold;
+  padding: 1px 8px; border-radius: 8px 8px 8px 0; white-space: nowrap;
+}
+@keyframes pop { from { transform: scale(1.25); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.board-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  padding: 8px 12px; border-top: 2px solid var(--line); font-size: 14px; color: var(--muted);
+}
+.board-bar .key { display: inline-flex; align-items: center; gap: 6px; }
+.board-bar .key i { width: 18px; height: 12px; border: 2px solid var(--teal); background: var(--hl); border-radius: 3px; }
+.board-btns { display: flex; gap: 6px; }
+.board-btns .btn { padding: 6px 10px; font-size: 14px; }
+.pin { margin-top: 6px; padding: 4px 10px; font-size: 13px; background: #fff; border: 2px solid var(--line); }
+.credit { margin: 0; font-size: 12px; color: var(--muted); text-align: right; }
+.btn-sample { background: var(--accent); color: #fff; }
 
 /* ---------- 会話 ---------- */
 .chat {
@@ -203,9 +250,16 @@ body {
 .chat.dragover { outline: 4px dashed var(--teal); outline-offset: -8px; }
 
 /* 画面が狭いとき（タブレット縦など）は上下に並べる */
+@media (prefers-reduced-motion: reduce) {
+  .platz.talking, .platz.thinking, .mark { animation: none; }
+  .frame { transition: none; }
+}
+
 @media (max-width: 800px) {
   body { height: auto; min-height: 100vh; }
   .layout { grid-template-columns: 1fr; }
+  .board { height: 50vh; flex: none; }
+  .left.has-problem .stage-buttons { flex-direction: row; }
   .platz { max-height: 28vh; }
   .log { min-height: 40vh; }
   .composer { flex-wrap: wrap; }

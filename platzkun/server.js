@@ -25,6 +25,13 @@ const apiKey = process.env.ANTHROPIC_API_KEY || "";
 const DEMO = process.env.DEMO_MODE === "true" || !/^sk-ant-[\w-]{20,}$/.test(apiKey.trim());
 
 const client = DEMO ? null : new Anthropic();
+
+// なめらかな声（VOICEVOX）：塾のパソコンで VOICEVOX を起動しておくと、その声で読み上げる。
+// 起動していなければ、ブラウザ標準の声で読み上げる
+const VOICEVOX_URL = (process.env.VOICEVOX_URL || "http://127.0.0.1:50021").replace(/\/$/, "");
+const VOICEVOX_SPEAKER = Number(process.env.VOICEVOX_SPEAKER || 3); // 3 = ずんだもん（ノーマル）
+const VOICEVOX_SPEED = Number(process.env.VOICEVOX_SPEED || 1.1); // 話す速さ
+const VOICEVOX_PITCH = Number(process.env.VOICEVOX_PITCH || 0); // 声の高さ（-0.15〜0.15 くらい）
 const app = express();
 
 // 画像（base64）を含むので、受け取れるサイズを大きめにしておく
@@ -39,6 +46,49 @@ app.use("/lib/dompurify", express.static(path.join(here, "node_modules/dompurify
 
 app.get("/api/config", (_req, res) => {
   res.json({ maxTurns: MAX_TURNS, demo: DEMO });
+});
+
+// VOICEVOX が使えるか、使う声の名前（画面にクレジット表記するため）
+app.get("/api/tts/status", async (_req, res) => {
+  try {
+    const r = await fetch(`${VOICEVOX_URL}/speakers`, { signal: AbortSignal.timeout(1500) });
+    if (!r.ok) throw new Error(String(r.status));
+    const speakers = await r.json();
+    const sp = speakers.find((s) => s.styles.some((st) => st.id === VOICEVOX_SPEAKER));
+    res.json({ voicevox: true, name: sp ? sp.name : `ID ${VOICEVOX_SPEAKER}` });
+  } catch {
+    res.json({ voicevox: false });
+  }
+});
+
+// 文章を VOICEVOX で音声（wav）にする
+app.post("/api/tts", async (req, res) => {
+  const text = String(req.body?.text || "").slice(0, 300);
+  if (!text.trim()) return res.status(400).end();
+  try {
+    const q = await fetch(
+      `${VOICEVOX_URL}/audio_query?speaker=${VOICEVOX_SPEAKER}&text=${encodeURIComponent(text)}`,
+      { method: "POST", signal: AbortSignal.timeout(10000) },
+    );
+    if (!q.ok) throw new Error(`audio_query ${q.status}`);
+    const query = await q.json();
+    query.speedScale = VOICEVOX_SPEED;
+    query.pitchScale = VOICEVOX_PITCH;
+    query.prePhonemeLength = 0.05; // 文と文のつなぎ目を短くして、なめらかに
+    query.postPhonemeLength = 0.05;
+    const w = await fetch(`${VOICEVOX_URL}/synthesis?speaker=${VOICEVOX_SPEAKER}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(query),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!w.ok) throw new Error(`synthesis ${w.status}`);
+    res.setHeader("Content-Type", "audio/wav");
+    res.send(Buffer.from(await w.arrayBuffer()));
+  } catch (error) {
+    console.error("[VOICEVOX]", error.message);
+    res.status(502).end();
+  }
 });
 
 // 会話の受け口。返事は1行ずつの JSON（NDJSON）で少しずつ送り返す
@@ -63,7 +113,7 @@ app.post("/api/chat", async (req, res) => {
   const send = (obj) => res.write(JSON.stringify(obj) + "\n");
 
   if (DEMO) {
-    await streamDemoReply(messages, send);
+    await streamDemoReply(messages, send, { sampleProblem: req.body?.sampleProblem === true });
     return res.end();
   }
 
@@ -121,5 +171,8 @@ app.listen(PORT, () => {
   } else {
     console.log(`Claude（${MODEL}）につないで解説します。`);
   }
-  console.log("（終わるときは、この画面で Ctrl + C を押します）\n");
+  fetch(`${VOICEVOX_URL}/version`, { signal: AbortSignal.timeout(1500) })
+    .then((r) => r.ok && console.log("VOICEVOX が見つかりました。なめらかな声で読み上げます。"))
+    .catch(() => console.log("VOICEVOX が起動していないので、ブラウザ標準の声で読み上げます。"))
+    .finally(() => console.log("（終わるときは、この画面で Ctrl + C を押します）\n"));
 });
