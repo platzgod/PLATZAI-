@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=BIZ+UDPGothic:wght@400;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
 <style>
-/* Layout: 左にプラッツ君の「教壇」、右に方眼ノートの会話。狭い画面では上下に積む */
+/* Layout: 左に「黒板」（問題の写真を大きく＋いま話している場所にオレンジの枠）とプラッツ君、右に方眼ノートの会話。狭い画面では上下に積む */
 :root {
   --paper: #fbfcf8;      /* ノートの紙 */
   --grid: #dfe8f1;       /* 方眼の線 */
@@ -20,6 +20,7 @@
   --line: #d6e2cf;
   --warn-bg: #fdecea;
   --warn: #b4382f;
+  --hl: rgba(255, 205, 40, .30);  /* 蛍光ペンの黄色 */
   --font-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", sans-serif;
   --font-body: "BIZ UDPGothic", "Hiragino Sans", "Meiryo", system-ui, sans-serif;
 }
@@ -28,6 +29,7 @@
     --paper: #171c16; --grid: #243026; --ink: #e8efe4; --muted: #a3b09e;
     --leaf: #7cc16a; --leaf-deep: #9bd78a; --leaf-soft: #22301f; --pencil: #ec9150;
     --me: #3a2a1c; --panel: #1f251d; --line: #34412f; --warn-bg: #3d2220; --warn: #ff9b90;
+    --hl: rgba(255, 205, 40, .22);
     color-scheme: dark;
   }
 }
@@ -35,6 +37,7 @@
   --paper: #171c16; --grid: #243026; --ink: #e8efe4; --muted: #a3b09e;
   --leaf: #7cc16a; --leaf-deep: #9bd78a; --leaf-soft: #22301f; --pencil: #ec9150;
   --me: #3a2a1c; --panel: #1f251d; --line: #34412f; --warn-bg: #3d2220; --warn: #ff9b90;
+  --hl: rgba(255, 205, 40, .22);
   color-scheme: dark;
 }
 
@@ -51,7 +54,7 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(240px, 32%) 1fr;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 1fr);
   grid-template-rows: auto 1fr;
   gap: 14px;
   padding-block: 14px;
@@ -139,6 +142,80 @@ button:disabled { opacity: .45; cursor: default; }
 }
 .stage-tools { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 
+/* ---- 左の列：問題が来たら、プラッツ君は小さく上に、問題の写真を大きく ---- */
+.left { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+.left .stage { flex: 1; }
+.left.has-problem .stage { flex: 0 0 auto; flex-direction: row; justify-content: flex-start; gap: 16px; }
+.left.has-problem .platz { order: -1; width: 104px; }
+.left.has-problem .say { flex: 1; text-align: left; }
+.left.has-problem .say::after {
+  left: -11px; top: 50%; bottom: auto; transform: translateY(-50%);
+  border: 10px solid transparent; border-right-color: var(--leaf); border-left: 0;
+}
+.left.has-problem .stage-tools { flex-direction: column; }
+
+.board {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.board-view {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 10px;
+}
+.frame { position: relative; transition: transform .45s ease; }
+.frame img { display: block; width: 100%; height: 100%; border-radius: 6px; }
+.mark {
+  position: absolute;
+  border: 3px solid var(--pencil);
+  background: var(--hl);
+  border-radius: 6px;
+  animation: pop .5s ease-out;
+  pointer-events: none;
+}
+.mark span {
+  position: absolute;
+  left: -3px;
+  bottom: 100%;
+  margin-bottom: 2px;
+  background: var(--pencil);
+  color: var(--panel);
+  font-family: var(--font-display);
+  font-size: .78rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 8px 8px 8px 0;
+  white-space: nowrap;
+}
+@keyframes pop { from { transform: scale(1.25); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .mark { animation: none; } .frame { transition: none; } }
+.board-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-top: 2px solid var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.board-bar .key { display: inline-flex; align-items: center; gap: 6px; }
+.board-bar .key i { width: 18px; height: 12px; border: 2px solid var(--pencil); background: var(--hl); border-radius: 3px; }
+.board-bar .btns { display: flex; gap: 6px; }
+.pin { margin-top: 4px; font-size: .8rem; padding: 3px 10px; }
+
 /* ---- 方眼ノート（会話） ---- */
 .notebook {
   min-width: 0;
@@ -216,6 +293,8 @@ button:disabled { opacity: .45; cursor: default; }
   html, body { height: auto; }
   .app { display: flex; flex-direction: column; }
   .notebook { height: 78vh; }
+  .board { height: 52vh; flex: none; }
+  .left.has-problem .stage-tools { flex-direction: row; }
   .stage { flex-direction: row; flex-wrap: wrap; }
   .platz { width: 130px; }
   .say { flex: 1 1 160px; }
@@ -233,14 +312,31 @@ button:disabled { opacity: .45; cursor: default; }
     </div>
   </header>
 
-  <section class="stage" aria-label="プラッツ君">
-    <div class="say" id="say" aria-live="polite">分からない問題の写真を見せてね！</div>
-    <img id="platz" class="platz" src="platz.png" alt="プラッツ君">
-    <div class="stage-tools">
-      <button id="replayBtn" class="btn-ghost" type="button" disabled>もう一度聞く</button>
-      <button id="hushBtn" class="btn-ghost" type="button" disabled>読み上げを止める</button>
-    </div>
-  </section>
+  <div class="left" id="left">
+    <section class="stage" aria-label="プラッツ君">
+      <div class="say" id="say" aria-live="polite">分からない問題の写真を見せてね！</div>
+      <img id="platz" class="platz" src="platz.png" alt="プラッツ君">
+      <div class="stage-tools">
+        <button id="replayBtn" class="btn-ghost" type="button" disabled>もう一度聞く</button>
+        <button id="hushBtn" class="btn-ghost" type="button" disabled>読み上げを止める</button>
+      </div>
+    </section>
+
+    <section class="board" id="board" aria-label="問題" hidden>
+      <div class="board-view" id="boardView">
+        <div class="frame" id="frame">
+          <img id="boardImg" alt="いま考えている問題">
+        </div>
+      </div>
+      <div class="board-bar">
+        <span class="key"><i></i>オレンジの枠が、いま話している場所</span>
+        <span class="btns">
+          <button id="zoomBtn" class="btn-ghost" type="button" disabled>枠の所を拡大</button>
+          <button id="clearMarkBtn" class="btn-ghost" type="button" disabled>枠を消す</button>
+        </span>
+      </div>
+    </section>
+  </div>
 
   <section class="notebook" id="notebook" aria-label="会話">
     <div class="log" id="log">
@@ -292,13 +388,22 @@ const RULES = `あなたは学習塾のキャラクター「プラッツ君」�
 
 ここまでが指示です。このあとから生徒との会話が始まります。プラッツ君として返事だけを書いてください。`;
 
+// 写真があるときだけ足す指示：いま話している場所を写真の上に枠で示すため
+const markRules = (w, h) => `
+
+## 写真の上の目印
+問題の写真は、画面に大きく表示されています。返事のいちばん最後に、いま話している内容に関係する写真の中の場所を、次の形で1行に書いてください。
+[[mark x=左端 y=上端 w=幅 h=高さ]]
+座標は写真の左上を (0, 0) とするピクセルで、写真の大きさは 幅${w} × 高さ${h} ピクセルです。問題番号・式・図・下線部など、話している部分を少し余裕をもって囲んでください。2か所までなら、1か所ずつ別の行に書けます。特定の場所がないときは [[mark none]] と書いてください。この行は生徒には見えず、枠として表示されます。`;
+
 const MAX_TURNS = 10;
 
 const VOICE_SETTINGS = {
   lang: "ja-JP",
   rate: 1.05,
-  pitch: 1.25,
-  preferredVoices: ["Google 日本語", "Nanami", "Kyoko", "Haruka", "Ayumi", "Otoya"],
+  pitch: 1.15,
+  // 上から順に探す。Edge の「Natural」の声がいちばん自然
+  preferredVoices: ["Nanami Online (Natural)", "Natural", "Google 日本語", "Nanami", "Kyoko", "Haruka", "Ayumi", "Otoya"],
 };
 
 // =====================================================================
@@ -311,13 +416,15 @@ const els = {
   micBtn: $("micBtn"), sendBtn: $("sendBtn"), stopBtn: $("stopBtn"), nextBtn: $("nextBtn"),
   replayBtn: $("replayBtn"), hushBtn: $("hushBtn"), voiceToggle: $("voiceToggle"),
   platz: $("platz"), say: $("say"), turns: $("turns"), notebook: $("notebook"),
+  left: $("left"), board: $("board"), boardView: $("boardView"), frame: $("frame"), boardImg: $("boardImg"),
+  zoomBtn: $("zoomBtn"), clearMarkBtn: $("clearMarkBtn"),
 };
 
 let sample = null;          // Claude に聞くための関数（使えないときは null）
 let canSendImages = false;
 let ready = false;          // Claude の準備ができたか
 let turns = [];             // これまでの会話 [{role, content}]
-let problemImage = null;    // この問題の画像（毎回いっしょに送る）
+let problemImage = null;    // この問題の画像 {blob, url, w, h}（毎回いっしょに送る）
 let pendingImage = null;    // まだ送っていない画像
 let busy = false;
 let ctl = null;
@@ -381,7 +488,7 @@ function bubble(kind, { text = "", image = null } = {}) {
     const img = document.createElement("img");
     img.className = "thumb";
     img.alt = "送った問題の画像";
-    img.src = URL.createObjectURL(image);
+    img.src = image.url;
     div.append(img);
   }
   const body = document.createElement("div");
@@ -410,7 +517,14 @@ const speaker = {
     this.stop();
     if (!this.ok) return onEnd && onEnd();
     const session = ++this.session;
-    const parts = (text.match(/[^。！？!?\n]+[。！？!?]*/g) || []).map((s) => s.trim()).filter(Boolean);
+    // 1文ずつだと文の間が途切れて聞こえるので、100字くらいまでまとめて話す
+    // （長すぎると途中で止まるブラウザがあるので、まとめすぎない）
+    const sentences = (text.match(/[^。！？!?\n]+[。！？!?]*/g) || []).map((s) => s.trim()).filter(Boolean);
+    const parts = [];
+    for (const s of sentences) {
+      if (parts.length && (parts[parts.length - 1] + s).length <= 100) parts[parts.length - 1] += s;
+      else parts.push(s);
+    }
     if (!parts.length) return onEnd && onEnd();
     this.onEnd = onEnd;
     onStart && onStart();
@@ -543,14 +657,41 @@ els.micBtn.addEventListener("click", () => {
 // =====================================================================
 // 画像
 // =====================================================================
-function takeImage(file) {
+// Claude が見る大きさ（約120万画素）にこちらで縮めておき、その大きさを座標の基準にする
+const MAX_PIXELS = 1150000;
+async function shrink(file) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = url;
+  await img.decode();
+  const scale = Math.min(1, Math.sqrt(MAX_PIXELS / (img.naturalWidth * img.naturalHeight)));
+  const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  const h = Math.max(1, Math.round(img.naturalHeight * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+  URL.revokeObjectURL(url);
+  const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.9));
+  return { blob, url: URL.createObjectURL(blob), w, h };
+}
+
+async function takeImage(file) {
   if (!file || !file.type.startsWith("image/")) return;
   if (!canSendImages) {
     bubble("warn", { text: "この画面では写真を送れません。問題文を文字で入力してね。" });
     return;
   }
-  pendingImage = file;
-  els.previewImg.src = URL.createObjectURL(file);
+  try {
+    pendingImage = await shrink(file);
+  } catch {
+    bubble("warn", { text: "この写真は開けませんでした。JPEG か PNG の写真でためしてね。" });
+    return;
+  }
+  els.previewImg.src = pendingImage.url;
   els.preview.hidden = false;
   setMood("idle", "写真を受け取ったよ！どこが分からないか教えてね。");
   els.input.focus();
@@ -574,6 +715,106 @@ els.notebook.addEventListener("drop", (e) => {
   els.notebook.classList.remove("drag");
   takeImage(e.dataTransfer.files[0]);
 });
+
+// =====================================================================
+// 黒板：問題の写真を大きく表示し、いま話している場所に枠をつける
+// =====================================================================
+let currentMarks = []; // [{x, y, w, h}]（写真のピクセル）
+let zoomed = false;
+let fitScale = 1;
+
+function showProblem(img) {
+  els.boardImg.src = img.url;
+  els.board.hidden = false;
+  els.left.classList.add("has-problem");
+  currentMarks = [];
+  zoomed = false;
+  fitBoard();
+  drawMarks();
+}
+function hideProblem() {
+  els.board.hidden = true;
+  els.left.classList.remove("has-problem");
+  els.boardImg.removeAttribute("src");
+  currentMarks = [];
+  zoomed = false;
+  drawMarks();
+}
+
+// 写真を黒板いっぱいに収める
+function fitBoard() {
+  if (!problemImage || els.board.hidden) return;
+  const vw = Math.max(40, els.boardView.clientWidth - 20);
+  const vh = Math.max(40, els.boardView.clientHeight - 20);
+  fitScale = Math.min(vw / problemImage.w, vh / problemImage.h);
+  els.frame.style.width = `${problemImage.w * fitScale}px`;
+  els.frame.style.height = `${problemImage.h * fitScale}px`;
+  applyZoom();
+}
+new ResizeObserver(fitBoard).observe(els.boardView);
+
+function drawMarks() {
+  els.frame.querySelectorAll(".mark").forEach((m) => m.remove());
+  if (problemImage) {
+    currentMarks.forEach((m, i) => {
+      const box = document.createElement("div");
+      box.className = "mark";
+      box.style.left = `${(m.x / problemImage.w) * 100}%`;
+      box.style.top = `${(m.y / problemImage.h) * 100}%`;
+      box.style.width = `${(m.w / problemImage.w) * 100}%`;
+      box.style.height = `${(m.h / problemImage.h) * 100}%`;
+      const label = document.createElement("span");
+      label.textContent = currentMarks.length > 1 ? `ここ ${i + 1}` : "ここ！";
+      box.append(label);
+      els.frame.append(box);
+    });
+  }
+  els.zoomBtn.disabled = !currentMarks.length;
+  els.clearMarkBtn.disabled = !currentMarks.length;
+  if (!currentMarks.length) zoomed = false;
+  applyZoom();
+}
+
+// 枠の所を拡大：枠の中心が黒板の真ん中に来るように、写真を拡大してずらす
+function applyZoom() {
+  els.zoomBtn.textContent = zoomed ? "全体を見る" : "枠の所を拡大";
+  if (!zoomed || !currentMarks.length || !problemImage) {
+    els.frame.style.transform = "";
+    return;
+  }
+  const x1 = Math.min(...currentMarks.map((m) => m.x));
+  const y1 = Math.min(...currentMarks.map((m) => m.y));
+  const x2 = Math.max(...currentMarks.map((m) => m.x + m.w));
+  const y2 = Math.max(...currentMarks.map((m) => m.y + m.h));
+  const vw = els.boardView.clientWidth - 20;
+  const vh = els.boardView.clientHeight - 20;
+  const z = Math.max(1, Math.min(3, 0.8 * Math.min(vw / ((x2 - x1) * fitScale), vh / ((y2 - y1) * fitScale))));
+  const dx = ((x1 + x2) / 2 - problemImage.w / 2) * fitScale;
+  const dy = ((y1 + y2) / 2 - problemImage.h / 2) * fitScale;
+  els.frame.style.transform = `translate(${-z * dx}px, ${-z * dy}px) scale(${z})`;
+}
+
+els.zoomBtn.addEventListener("click", () => { zoomed = !zoomed; applyZoom(); });
+els.clearMarkBtn.addEventListener("click", () => { currentMarks = []; drawMarks(); });
+
+// 返事の最後の [[mark x=.. y=.. w=.. h=..]] を読み取る（写真の外にはみ出した分は切る）
+function parseMarks(text) {
+  if (!problemImage) return [];
+  const marks = [];
+  for (const [, body] of text.matchAll(/\[\[mark([^\]]*)\]\]/g)) {
+    const v = {};
+    for (const [, k, n] of body.matchAll(/\b(x|y|w|h)\s*[=:]\s*(-?\d+(?:\.\d+)?)/g)) v[k] = Number(n);
+    if (!["x", "y", "w", "h"].every((k) => Number.isFinite(v[k]))) continue;
+    const x = Math.max(0, Math.min(problemImage.w, v.x));
+    const y = Math.max(0, Math.min(problemImage.h, v.y));
+    const w = Math.min(problemImage.w - x, v.w);
+    const h = Math.min(problemImage.h - y, v.h);
+    if (w > 4 && h > 4) marks.push({ x, y, w, h });
+  }
+  return marks.slice(0, 2);
+}
+// 生徒に見せる文から目印の行を取りのぞく（書きかけの途中も隠す）
+const cleanText = (text) => text.replace(/\[\[[^\]]*\]\]/g, "").replace(/\[\[?[^\]]*$/, "").trimEnd();
 
 // =====================================================================
 // 送信 → Claude に聞く
@@ -607,7 +848,10 @@ els.form.addEventListener("submit", async (e) => {
   speaker.stop();
 
   const img = pendingImage;
-  if (img) problemImage = img; // この問題の写真として、以後のやり取りでも毎回送る
+  if (img) {
+    problemImage = img; // この問題の写真として、以後のやり取りでも毎回送る
+    showProblem(img);
+  }
   const content = text || "この問題が分かりません。教えてください。";
   turns.push({ role: "user", content });
   bubble("me", { text: text || "この問題を教えて！", image: img });
@@ -627,16 +871,30 @@ els.form.addEventListener("submit", async (e) => {
     onText: ({ text: t }) => {
       body.classList.remove("thinking-dots");
       setMood("thinking", "書いてるよ…");
-      renderRich(body, t);
+      renderRich(body, cleanText(t));
       els.log.scrollTop = els.log.scrollHeight;
     },
   };
-  if (problemImage) options.images = [problemImage];
+  if (problemImage) options.images = [problemImage.blob];
+  const rules = RULES + (problemImage ? markRules(problemImage.w, problemImage.h) : "");
 
   try {
-    const { text: answer, truncated } = await sample([{ role: "user", content: RULES }, ...turns], options);
+    const { text: raw, truncated } = await sample([{ role: "user", content: rules }, ...turns], options);
+    const answer = cleanText(raw);
     renderRich(body, answer);
-    turns.push({ role: "assistant", content: answer });
+    turns.push({ role: "assistant", content: raw }); // 目印の行も残す（次の返事でも同じ書き方を続けるため）
+    const marks = parseMarks(raw);
+    if (marks.length) {
+      currentMarks = marks;
+      zoomed = false;
+      drawMarks();
+      const pin = document.createElement("button");
+      pin.type = "button";
+      pin.className = "btn-ghost pin";
+      pin.textContent = "この場所を見る";
+      pin.addEventListener("click", () => { currentMarks = marks; zoomed = false; drawMarks(); });
+      body.closest(".msg").append(pin);
+    }
     if (truncated) bubble("note", { text: "返事が途中で切れました。続きは「続きを教えて」と送ってね。" });
     if (left() <= 0) bubble("note", { text: `この問題のやり取りは${MAX_TURNS}回までだよ。「次の問題へ」を押してね。` });
     speak(answer);
@@ -644,7 +902,7 @@ els.form.addEventListener("submit", async (e) => {
     turns.pop(); // 失敗した質問は数えない
     const partial = err && err.code !== "refused" ? err.text : "";
     if (partial) {
-      renderRich(body, partial);
+      renderRich(body, cleanText(partial));
     } else {
       body.closest(".msg").remove();
     }
@@ -687,6 +945,7 @@ els.nextBtn.addEventListener("click", () => {
   if (listening) recognizer.stop();
   turns = [];
   problemImage = null;
+  hideProblem();
   lastSpoken = "";
   dropImage();
   els.input.value = "";
