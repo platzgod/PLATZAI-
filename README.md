@@ -19,3 +19,9 @@ python3 builder/test_vba.py dist/合格一貫カリキュラム_マスターテ�
 - `builder/vba/` … VBA ソース（vbaProject.bin はここから生成）
 - `builder/vbaproject.py` … VBA プロジェクト（MS-OVBA / CFB）の生成
 - `builder/package.py` … .xlsx → .xlsm への変換とボタンの追加
+
+## フォレスタ学習チェック（中学生・Power Apps版）
+
+- `forest_app/設計書_v0.3.md` … Power Apps＋SharePointリストの設計書
+- `forest_app/作成手順書.md` … 画面ごとの手順と貼り付ける数式（Power Fx）
+- `forest_app/csv/` … 取り込み用の表（架空のサンプル）。作り直し：`python3 forest_app/tools/make_sample_csv.py`

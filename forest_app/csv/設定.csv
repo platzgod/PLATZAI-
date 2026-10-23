@@ -1,0 +1,4 @@
+﻿Title,SettingValue,Description
+DefaultTargetLaps,2,目標周回数の初期値（ロードマップの TargetLaps が空の行に使う）
+LapCountMode,合算,達成に数える種類：「授業のみ」または「合算」（授業＋宿題）
+DelayGraceDays,0,遅れの猶予日数：予定週の日曜日からこの日数を過ぎても0周なら「遅れ」
