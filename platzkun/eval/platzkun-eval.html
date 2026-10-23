@@ -1,0 +1,523 @@
+<title>プラッツ君 解説テスト</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&family=BIZ+UDPGothic:wght@400;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<style>
+/* Layout: 上に操作と集計、その下にテスト問題ごとの結果カード（会話・自動チェック・採点・枠つき写真） */
+:root {
+  --bg: #f6f8f3;
+  --panel: #ffffff;
+  --ink: #22301f;
+  --muted: #66725f;
+  --line: #dbe5d3;
+  --leaf: #4f8f41;
+  --leaf-soft: #e7f2e1;
+  --me: #fff2e4;
+  --pencil: #d9772b;
+  --hl: rgba(255, 205, 40, .30);
+  --ok: #2f7d3a;
+  --ok-bg: #e2f3e2;
+  --ng: #b4382f;
+  --ng-bg: #fbe5e3;
+  --warn: #8a6300;
+  --warn-bg: #fff3cc;
+  --font-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", sans-serif;
+  --font-body: "BIZ UDPGothic", "Hiragino Sans", "Meiryo", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161b15; --panel: #1f251d; --ink: #e8efe4; --muted: #a3b09e; --line: #34412f;
+    --leaf: #7cc16a; --leaf-soft: #22301f; --me: #3a2a1c; --pencil: #ec9150; --hl: rgba(255, 205, 40, .22);
+    --ok: #8fd99a; --ok-bg: #1f3a22; --ng: #ff9b90; --ng-bg: #3d2220; --warn: #f3cf6b; --warn-bg: #3a3119;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161b15; --panel: #1f251d; --ink: #e8efe4; --muted: #a3b09e; --line: #34412f;
+  --leaf: #7cc16a; --leaf-soft: #22301f; --me: #3a2a1c; --pencil: #ec9150; --hl: rgba(255, 205, 40, .22);
+  --ok: #8fd99a; --ok-bg: #1f3a22; --ng: #ff9b90; --ng-bg: #3d2220; --warn: #f3cf6b; --warn-bg: #3a3119;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+h1 { margin: 0; font-family: var(--font-display); font-size: 1.6rem; text-wrap: balance; }
+h2 { margin: 0; font-family: var(--font-display); font-size: 1.1rem; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+button {
+  font: inherit; font-weight: 700; border-radius: 10px; padding: 8px 16px; cursor: pointer;
+  border: 2px solid var(--line); background: var(--panel); color: var(--ink);
+}
+button.primary { background: var(--leaf); border-color: var(--leaf); color: var(--panel); }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible { outline: 3px solid var(--pencil); outline-offset: 2px; }
+
+.head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.head .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat b { font-size: 1.5rem; font-variant-numeric: tabular-nums; font-family: var(--font-display); }
+.stat span { font-size: .8rem; color: var(--muted); letter-spacing: .04em; }
+.runs { display: flex; flex-wrap: wrap; gap: 6px; }
+.runs button { font-size: .85rem; padding: 4px 10px; font-weight: 400; }
+.runs button.on { border-color: var(--leaf); background: var(--leaf-soft); font-weight: 700; }
+
+.cases { display: flex; flex-direction: column; gap: 14px; }
+.case { display: flex; flex-direction: column; gap: 12px; }
+.case-top { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.chip { font-size: .78rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--leaf-soft); color: var(--ink); }
+.state { margin-left: auto; font-size: .85rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+.state.wait { color: var(--muted); background: var(--bg); }
+.state.run { color: var(--warn); background: var(--warn-bg); }
+.state.pass { color: var(--ok); background: var(--ok-bg); }
+.state.fail { color: var(--ng); background: var(--ng-bg); }
+.expect { font-size: .88rem; color: var(--muted); }
+.body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; }
+.talk { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.say { padding: 8px 12px; border-radius: 12px; max-width: 92%; overflow-wrap: anywhere; min-width: 0; }
+.say.me { align-self: flex-end; background: var(--me); }
+.say.platz { align-self: flex-start; background: var(--leaf-soft); }
+.say math[display="block"] { display: block; overflow-x: auto; margin: .3em 0; }
+.say .meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.flag { font-size: .72rem; padding: 0 8px; border-radius: 6px; font-weight: 700; }
+.flag.ok { color: var(--ok); background: var(--ok-bg); }
+.flag.ng { color: var(--ng); background: var(--ng-bg); }
+.flag.mid { color: var(--warn); background: var(--warn-bg); }
+.side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.shot { position: relative; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+.shot img { display: block; width: 100%; }
+.mark { position: absolute; border: 2px solid var(--pencil); background: var(--hl); border-radius: 4px; }
+.mark span { position: absolute; left: -2px; bottom: 100%; font-size: .7rem; font-weight: 700; background: var(--pencil); color: #fff; padding: 0 6px; border-radius: 6px 6px 6px 0; }
+.scores { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: center; font-size: .85rem; }
+.bar { height: 8px; border-radius: 4px; background: var(--bg); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--leaf); }
+.scores b { font-variant-numeric: tabular-nums; }
+.notes { font-size: .88rem; display: flex; flex-direction: column; gap: 4px; }
+.notes ul { margin: 0; padding-left: 1.2em; }
+.err { color: var(--ng); font-size: .88rem; }
+[hidden] { display: none !important; }
+@media (max-width: 760px) { .body { grid-template-columns: 1fr; } }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1>プラッツ君 解説テスト</h1>
+      <p class="muted" id="sub">テスト問題を全部プラッツ君に解かせて、別の Claude が採点します。</p>
+    </div>
+    <div class="controls">
+      <button id="runBtn" class="primary" type="button" disabled>テストを始める</button>
+      <button id="stopBtn" type="button" hidden>止める</button>
+    </div>
+  </header>
+
+  <section class="panel summary" aria-label="集計">
+    <div class="stat"><b id="sPass">–</b><span>合格 / 問題数</span></div>
+    <div class="stat"><b id="sLen">–</b><span>返事の平均の長さ（字）</span></div>
+    <div class="stat"><b id="sAsk">–</b><span>問いかけで終わった返事</span></div>
+    <div class="stat"><b id="sLeak">–</b><span>答えを言いすぎた返事</span></div>
+    <div class="stat"><b id="sMark">–</b><span>枠が文字にかかった返事</span></div>
+  </section>
+
+  <section class="panel" aria-label="これまでのテスト">
+    <h2>これまでのテスト</h2>
+    <p class="muted" id="runsNote">まだありません。「テストを始める」を押すと、ここに記録が残ります。</p>
+    <div class="runs" id="runs"></div>
+  </section>
+
+  <p class="muted" id="cost"></p>
+  <div class="cases" id="cases"></div>
+</div>
+
+<script>
+// =====================================================================
+// 解説ルール（元は platzkun/prompt.js。下の2行のあいだは tools/sync-prompt.mjs が書きこみます）
+// =====================================================================
+// <<SYSTEM_PROMPT
+const PROMPT_VERSION = 2;
+const SYSTEM_PROMPT = "あなたは学習塾のキャラクター「プラッツ君」です。中学生〜高校生（主に高校生、難関大学の入試レベルまで）の生徒が、分からない問題の写真を見せて質問してきます。教科は数学・英語・国語・理科・社会のどれでもあります。\n\n## 教え方\n- 目的は、生徒が自分の力で解けるようになることです。答えや完成した解き方をすぐに見せず、段階的にヒントを出して生徒に考えさせてください。\n- 1回の返事では、気づいてほしいポイントを1つだけ、短く伝えてください。説明しすぎず、生徒が自分で考える余地を残します。最後は短い問いかけで終えてください。（例：「左の式、因数分解できないかな？」）\n- ヒントは、軽いもの（どこに注目するか・何を思い出すか）から始めて、生徒の反応を見ながら少しずつ具体的にしていきます。\n- 生徒の考えが合っていたらしっかりほめ、まちがっていたら、どこで迷ったかを一緒に確かめてください。\n- 生徒が「答えだけ教えて」と言っても、まずはヒントを出してください。何度かヒントを出したうえで、生徒が自分で考えた跡があり、それでも行き詰まっているときは、解き方の流れを一緒に確認しながら答えにたどり着いてかまいません。\n- 最初の返事では、何の問題かを一言そえてから（例：「二次方程式だね。」）、すぐヒントに入ってください。写真が読み取れない・問題が複数あってどれか分からないときは、推測で進めずに生徒にたずねてください。\n\n## 話し方\n- 返事は画面に表示され、同時に音声で読み上げられます。一度に話す量は 1〜2文、70字くらいまでにしてください。\n- 前置き・ほめ言葉・問題文のくり返しは短くし、同じことを言いかえて重ねないでください。\n- 中高生に分かりやすい、やさしくて親しみやすい言葉で話してください。一人称は「ぼく」です。難しい用語を使うときは、ひとことで意味をそえてください。\n- 見出しや箇条書きは使わず、話しかけるような文章にしてください。強調したい語は **太字** にしてかまいません。\n- 数式は必ず LaTeX で書き、文中は $...$ 、独立した式は $...$ で囲んでください。（例：$x^2 + 3x - 4 = 0$）\n- 英語の問題では、英文や単語はそのまま英語で書いてかまいません。\n\n## 話題の範囲\n- 応じるのは、生徒が見せた問題（または入力した問題）と、それを解くために必要な学習内容だけです。\n- それ以外の話題（雑談、ゲーム、ほかの宿題をまとめてやってほしい、など）には応じず、「ぼくはこの問題のお手伝い係なんだ。問題の話にもどろう！」のように、やさしく問題に話をもどしてください。新しい問題を聞きたいときは「次の問題へ」ボタンを押すよう案内してください。\n- まだ問題が見せられていないときは、問題の写真をアップロードするか、問題文を入力するよう案内してください。\n\n## 写真の上の目印\n- 問題の写真は、画面に大きく表示されています。写真があるときは、返事のいちばん最後に、いま話している内容に関係する写真の中の場所を、次の形で1行に書いてください。\n  [[mark x=左端 y=上端 w=幅 h=高さ]]\n- 座標は写真の左上を (0, 0) とするピクセルです。写真の大きさ（幅×高さ）は、写真を送るときのメッセージに書いてあります。\n- 問題番号・式・図・下線部など、話している部分を少し余裕をもって囲んでください。2か所までなら、1か所ずつ別の行に書けます。特定の場所がないときは [[mark none]] と書いてください。\n- この行は生徒には見えず、写真の上の枠として表示されます。";
+// SYSTEM_PROMPT>>
+// アプリ（claude.ai 版）と同じ包み方で渡す
+const RULES = `${SYSTEM_PROMPT}
+
+問題の写真は、毎回の質問に添付されます。
+ここまでが指示です。このあとから生徒との会話が始まります。プラッツ君として返事だけを書いてください。`;
+
+const LEN_LIMIT = 80;   // これより長い返事は「長い」とする（ルールの目安は70字）
+const PARALLEL = 2;     // 同時に進めるテスト問題の数
+
+// =====================================================================
+// 表示の部品
+// =====================================================================
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function mathHtml(tex, display) {
+  if (!window.katex) return esc(display ? `$$${tex}$$` : `$${tex}$`);
+  try { return katex.renderToString(tex, { displayMode: display, output: "mathml", throwOnError: false }); }
+  catch { return esc(tex); }
+}
+function rich(text) {
+  return text
+    .replace(/\n?(\$\$[\s\S]+?\$\$)\n?/g, "$1")
+    .split(/(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g)
+    .map((p) => {
+      if (p.length > 4 && p.startsWith("$$") && p.endsWith("$$")) return mathHtml(p.slice(2, -2), true);
+      if (p.length > 2 && p.startsWith("$") && p.endsWith("$")) return mathHtml(p.slice(1, -1), false);
+      return esc(p).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+    })
+    .join("");
+}
+const el = (tag, cls, html) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+};
+
+// =====================================================================
+// 自動チェック（Claude を使わずにできるもの）
+// =====================================================================
+const cleanText = (t) => t.replace(/\[\[[^\]]*\]\]/g, "").trimEnd();
+// 読み上げの長さに近い数え方：数式は中身の文字数、太字の記号は数えない
+const plainLen = (t) => cleanText(t).replace(/\$\$?([^$]+)\$\$?/g, "$1").replace(/\*\*/g, "").replace(/\s+/g, "").length;
+const endsWithAsk = (t) => /[？?]\s*[）)」]?\s*$/.test(cleanText(t));
+function parseMarks(text, w, h) {
+  const out = [];
+  for (const [, body] of text.matchAll(/\[\[mark([^\]]*)\]\]/g)) {
+    const v = {};
+    for (const [, k, n] of body.matchAll(/\b(x|y|w|h)\s*[=:]\s*(-?\d+(?:\.\d+)?)/g)) v[k] = Number(n);
+    if (["x", "y", "w", "h"].every((k) => Number.isFinite(v[k]))) out.push({ x: v.x, y: v.y, w: v.w, h: v.h, inside: v.x >= 0 && v.y >= 0 && v.x + v.w <= w + 2 && v.y + v.h <= h + 2 });
+  }
+  return { marks: out, none: /\[\[mark\s+none\s*\]\]/.test(text) };
+}
+// 枠が文字の行にかかっているか（枠の面積の2割以上が、どこかの文字の行と重なる）
+function markHitsText(m, boxes) {
+  const area = Math.max(1, m.w * m.h);
+  return boxes.some(([x, y, w, h]) => {
+    const ix = Math.max(0, Math.min(m.x + m.w, x + w) - Math.max(m.x, x));
+    const iy = Math.max(0, Math.min(m.y + m.h, y + h) - Math.max(m.y, y));
+    return (ix * iy) / Math.min(area, w * h) >= 0.2;
+  });
+}
+function checkReply(c, raw, i) {
+  const len = plainLen(raw);
+  const pm = parseMarks(raw, c.w, c.h);
+  const leakWords = c.leak.filter((w) => raw.includes(w));
+  return {
+    len,
+    long: len > LEN_LIMIT,
+    ask: endsWithAsk(raw),
+    leak: leakWords,
+    marks: pm.marks,
+    markNone: pm.none,
+    markHit: pm.marks.length ? pm.marks.some((m) => markHitsText(m, c.textBoxes)) : null,
+    listy: /^\s*(#|[-*・]\s|\d+[.)]\s)/m.test(cleanText(raw)),
+  };
+}
+
+// =====================================================================
+// 採点（別の Claude に、基準にそって点をつけてもらう）
+// =====================================================================
+const CRITERIA = [
+  ["reading", "問題の読み取り"],
+  ["correctness", "内容の正しさ"],
+  ["hinting", "気づかせるヒント"],
+  ["brevity", "短さ（くどくない）"],
+  ["tone", "やさしさ・分かりやすさ"],
+  ["expect", "このケースの狙い"],
+];
+function judgePrompt(c, log) {
+  const talk = log.map((t) => `生徒：${t.student}\nプラッツ君：${cleanText(t.reply)}`).join("\n\n");
+  return `あなたは学習塾で指導の質をチェックするベテランの先生です。AIのキャラクター「プラッツ君」と生徒の会話を、きびしめに採点してください。
+
+# 問題
+${c.problem}
+
+# 正しい答えと考え方
+${c.answer}
+
+# このケースで見たいこと
+${c.expect}
+
+# プラッツ君のルール（要点）
+- 答えをすぐに言わず、気づかせるヒントを1つずつ出す。「答えだけ教えて」と言われても、まずヒント
+- 1回の返事は1〜2文・70字くらいまで。前置きやくり返しでくどくしない。最後は短い問いかけ
+- 中高生にやさしく分かりやすい言葉。一人称は「ぼく」
+- 問題と関係ない話には応じず、やさしく問題にもどす
+- 写真が読めない・どの問題か分からないときは、推測せずにたずねる
+
+# 会話
+${talk}
+
+# 採点
+次の観点を 1〜5 で採点してください（5 が最高）。
+reading（問題を正しく読み取ったか）、correctness（まちがった内容を教えていないか）、hinting（答えを言いすぎず、生徒が気づけるヒントか）、brevity（短く、くどくないか）、tone（中高生にやさしく分かりやすいか）、expect（「このケースで見たいこと」をどれだけ満たしたか）。
+pass は、correctness が 4 以上、かつ hinting・brevity・expect がすべて 4 以上のときだけ true にしてください。
+
+次の形の JSON だけを返してください。
+{"scores":{"reading":5,"correctness":5,"hinting":4,"brevity":3,"tone":5,"expect":4},"pass":false,"good":"良かった点を1文で","issues":["直すべき点を短く具体的に（返事の何番目かも書く）"]}`;
+}
+
+// =====================================================================
+// 状態
+// =====================================================================
+let sample = null, db = null;
+let cases = [];
+let running = false;
+let ctl = null;
+let view = {}; // caseId -> 結果
+
+const viewEls = {};
+function buildCards() {
+  const box = $("cases");
+  box.innerHTML = "";
+  for (const c of cases) {
+    const card = el("article", "panel case");
+    const top = el("div", "case-top");
+    top.append(el("span", "chip", esc(c.subject)), el("h2", "", esc(c.title)));
+    const state = el("span", "state wait", "待機中");
+    top.append(state);
+    const expect = el("p", "expect", `見たいこと：${esc(c.expect)}`);
+    const body = el("div", "body");
+    const talk = el("div", "talk");
+    const side = el("div", "side");
+    const shot = el("div", "shot");
+    const img = el("img");
+    img.src = c.image;
+    img.alt = `${c.title} の問題の写真`;
+    shot.append(img);
+    const scores = el("div", "scores");
+    const notes = el("div", "notes");
+    side.append(shot, scores, notes);
+    body.append(talk, side);
+    card.append(top, expect, body);
+    box.append(card);
+    viewEls[c.id] = { state, talk, shot, scores, notes };
+  }
+}
+
+function showCase(c, r) {
+  const v = viewEls[c.id];
+  if (!r) {
+    v.state.className = "state wait";
+    v.state.textContent = "待機中";
+    v.talk.innerHTML = c.turns.map((t) => `<div class="say me">${esc(t)}</div>`).join("");
+    v.scores.innerHTML = "";
+    v.notes.innerHTML = "";
+    v.shot.querySelectorAll(".mark").forEach((m) => m.remove());
+    return;
+  }
+  v.state.className = `state ${r.status === "running" ? "run" : r.judge?.pass ? "pass" : "fail"}`;
+  v.state.textContent = r.status === "running" ? "実行中…" : r.error ? "エラー" : r.judge?.pass ? "合格" : "要改善";
+
+  v.talk.innerHTML = "";
+  r.log.forEach((t, i) => {
+    v.talk.append(el("div", "say me", esc(t.student)));
+    if (t.reply == null) return;
+    const p = el("div", "say platz", rich(cleanText(t.reply)));
+    const k = t.check;
+    const meta = el("div", "meta");
+    meta.append(el("span", `flag ${k.long ? "ng" : "ok"}`, `${k.len}字`));
+    meta.append(el("span", `flag ${k.ask ? "ok" : "mid"}`, k.ask ? "問いかけで終わる" : "問いかけなし"));
+    if (k.leak.length) meta.append(el("span", "flag ng", `答えの言いすぎ？「${esc(k.leak[0])}」`));
+    if (k.listy) meta.append(el("span", "flag mid", "箇条書き・見出し"));
+    if (k.marks.length) meta.append(el("span", `flag ${k.markHit ? "ok" : "ng"}`, k.markHit ? `枠${i + 1}：文字にかかる` : `枠${i + 1}：文字から外れ`));
+    else meta.append(el("span", `flag ${k.markNone ? "ok" : "mid"}`, k.markNone ? "枠なし（指定）" : "枠の行がない"));
+    p.append(meta);
+    v.talk.append(p);
+  });
+  for (let i = r.log.length; i < c.turns.length; i++) v.talk.append(el("div", "say me", esc(c.turns[i])));
+
+  // 写真に、返事ごとの枠を描く
+  v.shot.querySelectorAll(".mark").forEach((m) => m.remove());
+  r.log.forEach((t, i) => {
+    for (const m of t.check?.marks || []) {
+      const b = el("div", "mark", `<span>${i + 1}</span>`);
+      b.style.left = `${(m.x / c.w) * 100}%`;
+      b.style.top = `${(m.y / c.h) * 100}%`;
+      b.style.width = `${(m.w / c.w) * 100}%`;
+      b.style.height = `${(m.h / c.h) * 100}%`;
+      v.shot.append(b);
+    }
+  });
+
+  v.scores.innerHTML = "";
+  v.notes.innerHTML = "";
+  if (r.judge?.scores) {
+    for (const [k, label] of CRITERIA) {
+      const n = Number(r.judge.scores[k]) || 0;
+      v.scores.append(el("span", "", label), el("div", "bar", `<i style="width:${n * 20}%"></i>`), el("b", "", String(n)));
+    }
+    if (r.judge.good) v.notes.append(el("p", "", `良い点：${esc(r.judge.good)}`));
+    if (r.judge.issues?.length) {
+      v.notes.append(el("p", "", "直したい点："));
+      v.notes.append(el("ul", "", r.judge.issues.map((s) => `<li>${esc(s)}</li>`).join("")));
+    }
+  }
+  if (r.error) v.notes.append(el("p", "err", esc(r.error)));
+}
+
+function summarize() {
+  const rs = cases.map((c) => view[c.id]).filter((r) => r && r.status === "done");
+  const replies = rs.flatMap((r) => r.log.filter((t) => t.check));
+  $("sPass").textContent = rs.length ? `${rs.filter((r) => r.judge?.pass).length} / ${cases.length}` : "–";
+  $("sLen").textContent = replies.length ? Math.round(replies.reduce((a, t) => a + t.check.len, 0) / replies.length) : "–";
+  $("sAsk").textContent = replies.length ? `${replies.filter((t) => t.check.ask).length} / ${replies.length}` : "–";
+  $("sLeak").textContent = replies.length ? `${replies.filter((t) => t.check.leak.length).length} / ${replies.length}` : "–";
+  const marked = replies.filter((t) => t.check.marks.length);
+  $("sMark").textContent = marked.length ? `${marked.filter((t) => t.check.markHit).length} / ${marked.length}` : "–";
+}
+
+// =====================================================================
+// テストの実行
+// =====================================================================
+const ERR = {
+  not_granted: "Claude の利用が許可されていません。ページを開き直して「許可」を選んでください。",
+  rate_limited: "利用の上限に来ました。しばらく待ってから、もう一度始めてください。",
+  sampling_disabled: "このアカウントでは Claude を使えません。",
+};
+
+async function runCase(c, runId) {
+  const r = { caseId: c.id, status: "running", log: [], judge: null, error: null };
+  view[c.id] = r;
+  showCase(c, r);
+  try {
+    const blob = await (await fetch(c.image)).blob();
+    const turns = [];
+    for (let i = 0; i < c.turns.length; i++) {
+      if (ctl.signal.aborted) throw { code: "cancelled" };
+      const student = c.turns[i];
+      const content = i === 0 ? `${student}\n（写真の大きさ：幅${c.w}×高さ${c.h}ピクセル）` : student;
+      turns.push({ role: "user", content });
+      r.log.push({ student, reply: null });
+      showCase(c, r);
+      const { text } = await sample([{ role: "user", content: RULES }, ...turns], { images: [blob], cache: false, signal: ctl.signal });
+      turns.push({ role: "assistant", content: text });
+      r.log[i] = { student, reply: text, check: checkReply(c, text, i) };
+      showCase(c, r);
+    }
+    r.judge = await sample.json(judgePrompt(c, r.log), { modelTier: "complex", cache: false, signal: ctl.signal });
+  } catch (e) {
+    r.error = e?.code === "cancelled" ? "止めました" : ERR[e?.code] || `うまくいきませんでした（${e?.code || "unknown"}）`;
+    if (e?.code && ERR[e.code]) ctl.abort();
+  }
+  r.status = "done";
+  showCase(c, r);
+  summarize();
+  if (db) {
+    await db.doc(`evalRuns/${runId}/cases/${c.id}`).set({
+      caseId: c.id, log: r.log.map((t) => ({ student: t.student, reply: t.reply ?? null, check: t.check ?? null })),
+      judge: r.judge, error: r.error,
+    }).catch(() => {});
+  }
+  return r;
+}
+
+async function runAll() {
+  running = true;
+  ctl = new AbortController();
+  $("runBtn").disabled = true;
+  $("stopBtn").hidden = false;
+  view = {};
+  cases.forEach((c) => showCase(c, null));
+  summarize();
+  const runId = `v${PROMPT_VERSION}-${Date.now()}`;
+  const startedAt = Date.now();
+  if (db) await db.doc(`evalRuns/${runId}`).set({ version: PROMPT_VERSION, startedAt, status: "running", total: cases.length }).catch(() => {});
+
+  const queue = [...cases];
+  const results = [];
+  await Promise.all(Array.from({ length: PARALLEL }, async () => {
+    while (queue.length && !ctl.signal.aborted) results.push(await runCase(queue.shift(), runId));
+  }));
+
+  const passed = results.filter((r) => r.judge?.pass).length;
+  if (db) {
+    await db.doc(`evalRuns/${runId}`).set({
+      version: PROMPT_VERSION, startedAt, finishedAt: Date.now(), total: cases.length, done: results.length, passed,
+      status: ctl.signal.aborted ? "stopped" : "done",
+    }).catch(() => {});
+  }
+  running = false;
+  $("runBtn").disabled = !sample;
+  $("stopBtn").hidden = true;
+  loadRuns(runId);
+}
+
+$("runBtn").addEventListener("click", () => { if (!running) runAll(); });
+$("stopBtn").addEventListener("click", () => ctl && ctl.abort());
+
+// =====================================================================
+// これまでのテスト（db に残した結果を見る）
+// =====================================================================
+async function loadRuns(selected) {
+  if (!db) return;
+  let snap;
+  try { snap = await db.collection("evalRuns").orderBy("startedAt", "desc").limit(12).get(); } catch { return; }
+  const box = $("runs");
+  box.innerHTML = "";
+  $("runsNote").hidden = snap.docs.length > 0;
+  for (const d of snap.docs) {
+    const r = d.data();
+    const date = new Date(r.startedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const b = el("button", d.id === selected ? "on" : "", `ルール v${r.version}・${date}・合格 ${r.passed ?? "–"} / ${r.total}${r.status === "running" ? "（途中）" : ""}`);
+    b.type = "button";
+    b.addEventListener("click", () => openRun(d.id));
+    box.append(b);
+  }
+}
+async function openRun(runId) {
+  if (running) return;
+  const snap = await db.collection(`evalRuns/${runId}/cases`).get().catch(() => null);
+  if (!snap) return;
+  view = {};
+  for (const d of snap.docs) {
+    const r = d.data();
+    view[r.caseId] = { ...r, status: "done" };
+  }
+  cases.forEach((c) => showCase(c, view[c.id] || null));
+  summarize();
+  loadRuns(runId);
+}
+
+// =====================================================================
+// はじめに
+// =====================================================================
+(async () => {
+  try { cases = await (await fetch("cases.json")).json(); }
+  catch { $("cases").append(el("p", "err", "テスト問題（cases.json）を読みこめませんでした。")); return; }
+  buildCards();
+  cases.forEach((c) => showCase(c, null));
+  const calls = cases.reduce((a, c) => a + c.turns.length, 0) + cases.length;
+  $("sub").textContent = `解説ルール v${PROMPT_VERSION} で、テスト問題 ${cases.length} 問をプラッツ君に解かせて、別の Claude が採点します。`;
+  $("cost").textContent = `1回のテストで Claude を約 ${calls} 回使います（あなたの claude.ai の利用枠から）。全部で 5〜15 分ほどかかります。`;
+
+  if (window.claude) {
+    [sample, db] = await Promise.all([window.claude.use("sample"), window.claude.use("db")]);
+  }
+  if (!sample) {
+    $("cost").textContent = "この画面では Claude につながりません。claude.ai でこのページを開いてください。";
+    return;
+  }
+  $("runBtn").disabled = false;
+  loadRuns();
+})();
+</script>

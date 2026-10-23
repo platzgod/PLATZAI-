@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build:demo": "node tools/build-demo.mjs"
+    "build:demo": "node tools/build-demo.mjs",
+    "sync:prompt": "node tools/sync-prompt.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
