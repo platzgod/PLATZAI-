@@ -5,7 +5,8 @@
 #
 # 1つの問題（ケース）に書くこと
 #   id / subject / title … 名前
-#   lines   … 画像に書く文（1行ずつ）。None なら画像なし
+#   lines   … 画像に書く文（1行ずつ）。上つき・下つきの小さい字があるときは、
+#             [("∫", "big"), ("1", "sup"), ...] のように (文字, 種類) の並びで書く
 #   problem … 採点する人（Claude）に伝える、問題の中身
 #   answer  … 正しい答えと、正しい考え方の要点
 #   expect  … このケースで見たいこと（良い返事の条件）
@@ -37,7 +38,10 @@ CASES = [
         "id": "math-integral",
         "subject": "数学",
         "title": "部分積分（生徒がまちがえる）",
-        "lines": ["【問題】 次の定積分を求めよ。", "∫₀¹ x eˣ dx"],
+        "lines": [
+            "【問題】 次の定積分を求めよ。",
+            [("∫", "big"), ("1", "sup"), ("0", "sub"), ("  x e", ""), ("x", "sup"), (" dx", "")],
+        ],
         "problem": "定積分 ∫_0^1 x e^x dx を求めよ。",
         "answer": "部分積分で [x e^x]_0^1 − ∫_0^1 e^x dx = e − (e − 1) = 1。答えは 1。",
         "expect": "どちらを微分するか（x を微分、e^x を積分）に気づかせる。生徒の「e − 1」はまちがいなので、頭ごなしに否定せず、どこで迷ったか（最後の ∫e^x dx の部分）を一緒に確かめる。",
@@ -97,7 +101,7 @@ CASES = [
         ],
         "problem": "質量2.0kgの小球を高さ10mから静かに落とす。地面に達する直前の速さ。g=9.8m/s^2、空気抵抗なし。",
         "answer": "v^2 = 2gh = 2×9.8×10 = 196 より v = 14 m/s（質量は関係ない）。",
-        "expect": "初速0の等加速度運動（自由落下）だと気づかせる。生徒が v² = 2gh を言えたらほめて、数値を入れるよう促す（答えの14は生徒に計算させる）。",
+        "expect": "自由落下（初速0の等加速度運動）か、力学的エネルギー保存のどちらかの考え方に気づかせる（どちらでもよい）。生徒が v² = 2gh を言えたらほめて、数値を入れるよう促す（答えの14は生徒に計算させる）。",
         "turns": ["どの公式を使えばいいか分からない", "v² = 2gh ですか？"],
         "leak": ["14 m/s", "14m/s", "= 14"],
     },
@@ -161,12 +165,35 @@ def draw(case):
     W, H = 1200, 120 + 90 * len(case["lines"]) + 60
     im = Image.new("RGB", (W, H), "white")
     d = ImageDraw.Draw(im)
-    font = ImageFont.truetype(FONT, 38)
+    fonts = {
+        "": ImageFont.truetype(FONT, 38),
+        "big": ImageFont.truetype(FONT, 56),
+        "sup": ImageFont.truetype(FONT, 24),
+        "sub": ImageFont.truetype(FONT, 24),
+    }
+    tofu = bytes(fonts[""].getmask("\uE7FF"))  # 字がないときに出る四角
     boxes = []
     y = 70
     for line in case["lines"]:
-        d.text((60, y), line, font=font, fill="black")
-        x1, y1, x2, y2 = d.textbbox((60, y), line, font=font)
+        segs = [(line, "")] if isinstance(line, str) else line
+        x = 60
+        x1 = y1 = 10**9
+        x2 = y2 = 0
+        sub_x = None
+        for text, kind in segs:
+            for ch in text:
+                if ord(ch) > 127 and bytes(fonts[kind].getmask(ch)) == tofu:
+                    raise SystemExit(f"{case['id']}: 「{ch}」はフォントにないので描けません")
+            # 上つき・下つきは前の字の右上・右下に。下つきは上つきの真下に重ねる
+            dy = {"sup": -10, "sub": 34, "big": -14}.get(kind, 0)
+            if kind == "sub" and sub_x is not None:
+                x = sub_x
+            pos = (x, y + dy)
+            d.text(pos, text, font=fonts[kind], fill="black")
+            bx = d.textbbox(pos, text, font=fonts[kind])
+            x1, y1, x2, y2 = min(x1, bx[0]), min(y1, bx[1]), max(x2, bx[2]), max(y2, bx[3])
+            sub_x = x if kind == "sup" else None
+            x = max(x, bx[2])
         boxes.append([x1, y1, x2 - x1, y2 - y1])
         y += 90
     if case.get("blur"):
