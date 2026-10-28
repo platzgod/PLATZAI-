@@ -12,8 +12,8 @@ crons = ["*/10 1-2 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "line-funnel"
-# `npx wrangler d1 create line-funnel` で表示される database_id に置き換える
-database_id = "REPLACE_WITH_YOUR_DATABASE_ID"
+# `npx wrangler d1 create line-funnel` で作成したデータベース
+database_id = "1b993472-aa31-4089-a078-34fc1dadbc61"
 migrations_dir = "migrations"
 
 [vars]
