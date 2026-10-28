@@ -1,0 +1,17 @@
+{
+  "name": "line-funnel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "総合型・学校推薦型選抜 来場者向け LINE 自動配信（Cloudflare Workers + D1 + Stripe）",
+  "type": "module",
+  "scripts": {
+    "test": "node --test --no-warnings=ExperimentalWarning test/*.test.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init:local": "wrangler d1 migrations apply line-funnel --local",
+    "db:init:remote": "wrangler d1 migrations apply line-funnel --remote"
+  },
+  "devDependencies": {
+    "wrangler": "4.150.0"
+  }
+}

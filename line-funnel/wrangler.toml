@@ -1,0 +1,27 @@
+name = "line-funnel"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# 毎日 JST 10:00〜11:50 に10分おきに実行（UTC 01:00〜02:50）。
+# 配信の判定は「1日1回」単位で、同じ配信を2回送ることはありません。
+# 無料プランは1回の実行で外部へのリクエストが50件までなので、
+# 配信対象が多い日は複数回に分けて送り切るためにこの間隔にしています。
+[triggers]
+crons = ["*/10 1-2 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "line-funnel"
+# `npx wrangler d1 create line-funnel` で表示される database_id に置き換える
+database_id = "REPLACE_WITH_YOUR_DATABASE_ID"
+migrations_dir = "migrations"
+
+[vars]
+# 1回の実行で LINE API を呼ぶ上限（無料プランの50件制限に余裕を持たせた値）
+MAX_LINE_REQUESTS_PER_RUN = "40"
+
+# 秘密情報は wrangler.toml に書かず、以下のコマンドで登録する：
+#   npx wrangler secret put LINE_CHANNEL_SECRET
+#   npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
+#   npx wrangler secret put STRIPE_WEBHOOK_SECRET
+#   npx wrangler secret put ADMIN_TOKEN

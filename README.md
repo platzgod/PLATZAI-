@@ -19,3 +19,7 @@ python3 builder/test_vba.py dist/合格一貫カリキュラム_マスターテ�
 - `builder/vba/` … VBA ソース（vbaProject.bin はここから生成）
 - `builder/vbaproject.py` … VBA プロジェクト（MS-OVBA / CFB）の生成
 - `builder/package.py` … .xlsx → .xlsm への変換とボタンの追加
+
+## LINE 自動配信システム（総合型選抜・学校推薦型選抜）
+
+- `line-funnel/` … 来場者を LINE 公式アカウントに登録し、フロント商品 → 個別相談へ自動で案内する仕組み（Cloudflare Workers + D1 + Stripe）。詳しくは [line-funnel/README.md](line-funnel/README.md)、初回の準備は [line-funnel/docs/SETUP.md](line-funnel/docs/SETUP.md)
