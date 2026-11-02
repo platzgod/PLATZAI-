@@ -36,6 +36,8 @@ function handleLineEvent_(ev) {
   var s = settings_();
 
   if (ev.type === 'follow') {
+    // 公式アカウントの「あいさつメッセージ」と二重にならないよう、設定で「はい」のときだけ送る
+    if (String(s['友だち追加のときに連携の案内を送る']).trim() !== 'はい') return;
     reply_(ev.replyToken, (s['塾名'] ? s['塾名'] + 'です。友だち追加ありがとうございます。\n' : '') +
       (s['LINE連携の案内文'] || '連携コードをこのトークに送ってください。'));
     return;

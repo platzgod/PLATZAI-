@@ -62,7 +62,7 @@ console.log('文面づくり');
   });
   test('本文：必要な項目が入り、申し送りは入らない', () => {
     const t = ctx.buildReportText_(SAMPLE, { '生徒名': '山田 太郎', '学年': '高2' },
-      { '塾名': '個人指導塾PLATZ', '教室名': '', '問い合わせ先': '0120-000-000' });
+      { '塾名': '個人指導塾PLATZ', '教室名': '', '問い合わせ先': '' });
     for (const s of ['山田 太郎さん（高2）', '2026年11月2日（月）', '科目：数学ⅠA　担当：佐藤 先生', '■ 数学ⅠA　理解度 ★★★★☆（4/5）', '・積極的に質問していた',
       '小テスト：8／10点', '前回の宿題：全部できていた', '■ 次回の授業　11月9日（月）', '■ ご連絡'])
       assert.ok(t.includes(s), '含まれない: ' + s);
@@ -176,6 +176,25 @@ console.log('通しの流れ');
   const UID = 'U' + 'a'.repeat(32);
   const UID2 = 'U' + 'b'.repeat(32);
 
+  test('友だち追加：初期設定（はい）なら案内を送る／「いいえ」なら送らない', () => {
+    const follow = () => ctx.doPost({ postData: { contents: JSON.stringify({ events: [
+      { type: 'follow', replyToken: 'f1', source: { type: 'user', userId: UID } }] }) } });
+    follow();
+    const msg = calls.fetch.at(-1).payload.messages[0].text;
+    assert.match(msg, /^個人指導塾PLATZです。/);
+    assert.match(msg, /連携コード/);
+    const set = sh('設定');
+    const r = set.data.findIndex(x => x[0] === '友だち追加のときに連携の案内を送る') + 1;
+    set._set(r, 2, 'いいえ');
+    const n = calls.fetch.length;
+    follow();
+    assert.strictEqual(calls.fetch.length, n);
+    set._set(r, 2, 'はい');
+  });
+  test('問い合わせ先が空なら電話番号の行は出ない', () => {
+    const t = ctx.buildReportText_(SAMPLE, { '生徒名': '山田 太郎' }, ctx.settings_());
+    assert.ok(t.endsWith('ご不明な点は教室までお気軽にお問い合わせください。'));
+  });
   test('知らないコードは連携しない', () => {
     ctx.doPost({ postData: { contents: JSON.stringify({ events: [
       { type: 'message', replyToken: 'r0', source: { type: 'user', userId: UID }, message: { type: 'text', text: 'ZZZZZZ' } }] }) } });
