@@ -257,7 +257,7 @@ function addReport_(a, submittedAt) {
   var st = parseStudentChoice_(a.student);
   var student = findStudent_(st.id) || { '生徒ID': st.id, '生徒名': st.name };
   var text = buildReportText_(a, student, settings_());
-  var id = 'R' + Utilities.formatDate(submittedAt, Session.getScriptTimeZone(), 'yyyyMMdd-HHmmss') +
+  var id = 'R' + Utilities.formatDate(submittedAt, ss_().getSpreadsheetTimeZone(), 'yyyyMMdd-HHmmss') +
     '-' + Math.floor(Math.random() * 900 + 100);
 
   var row = [submittedAt, id, STATUS.WAITING, false, checkAnswers_(a, findStudent_(st.id)), st.id];

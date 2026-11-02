@@ -7,13 +7,13 @@ const vm = require('vm');
 const assert = require('assert');
 const { makeEnv } = require('./gas_mock');
 
-const SRC = path.join(__dirname, '..', 'apps_script');
-const FILES = ['Config.gs', 'Report.gs', 'Sheets.gs', 'Send.gs', 'LineLink.gs', 'Menu.gs'];
+// 先生が貼り付ける「貼り付け用_コード.gs」をそのまま読み込んでテストする
+const BUNDLE = require('../build_bundle').build();
 
 function load() {
   const env = makeEnv();
   const ctx = vm.createContext(env.g);
-  FILES.forEach(f => vm.runInContext(fs.readFileSync(path.join(SRC, f), 'utf8'), ctx, { filename: f }));
+  vm.runInContext(fs.readFileSync(BUNDLE, 'utf8'), ctx, { filename: path.basename(BUNDLE) });
   return { ...env, ctx };
 }
 

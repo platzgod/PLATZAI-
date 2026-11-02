@@ -47,7 +47,7 @@ function makeEnv() {
     insertSheet: n => { const s = new Sheet(n); sheets.push(s); return s; },
     getSheets: () => sheets,
     deleteSheet: s => sheets.splice(sheets.indexOf(s), 1),
-    getId: () => 'SS_ID'
+    getId: () => 'SS_ID', getSpreadsheetTimeZone: () => 'Asia/Tokyo'
   };
   const builder = () => { const b = { requireValueInList: () => b, build: () => ({}) }; return b; };
 
