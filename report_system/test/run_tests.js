@@ -316,4 +316,38 @@ console.log('通しの流れ');
   });
 }
 
+console.log('スプレッドシートの自動変換・列のずれ');
+{
+  const { ctx, sheets } = load();
+  ctx.setupSheets_();
+  const rep = sheets.find(s => s.name === '報告書');
+  const col = h => rep.data[0].indexOf(h);
+
+  test('「8/10」や「+」で始まる文が、日付・数式に化けない', () => {
+    ctx.onFormSubmitHandler({ response: fakeResponse({ ...SAMPLE, test: '8/10', hwNext: '+αで p.120 も' }, ctx) });
+    const row = rep.data[1];
+    assert.strictEqual(row[col('小テストの結果')], '8/10');
+    assert.strictEqual(row[col('次回までの宿題')], '+αで p.120 も');
+    assert.strictEqual(row[col('授業日')], '2026-11-02');
+    assert.strictEqual(row[col('承認')], false);
+    // シートから読み戻して本文を作り直しても同じ
+    ctx.SpreadsheetApp.getActiveSpreadsheet().setActiveSheetForTest(rep, 2);
+    ctx.menuRebuildText();
+    const t = rep.data[1][col(ctx.REPORT_TAIL[0])];
+    assert.ok(t.includes('小テスト：8／10点'), t);
+    assert.ok(t.includes('2026年11月2日（月）'));
+  });
+
+  test('質問を増やしても、見出しの名前で正しい列に入る', () => {
+    ctx.QUESTIONS.push({ page: 'comment', key: 'extra', title: '追加の質問', type: 'text' });
+    ctx.onFormSubmitHandler({ response: fakeResponse({ ...SAMPLE, extra: 'あいう', test: '7/10' }, ctx) });
+    const row = rep.data[2];
+    assert.strictEqual(rep.data[0][rep.data[0].length - 1], '追加の質問');
+    assert.strictEqual(row[col('追加の質問')], 'あいう');
+    assert.strictEqual(row[col('小テストの結果')], '7/10');
+    assert.strictEqual(row[col('ステータス')], '確認待ち');
+    assert.ok(row[col(ctx.REPORT_TAIL[0])].includes('7／10点'));
+  });
+}
+
 console.log(`\n${passed} 件すべて成功`);

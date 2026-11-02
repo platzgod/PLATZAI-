@@ -358,7 +358,13 @@ function splitIds_(s) {
  */
 
 function ss_() {
-  return SpreadsheetApp.getActiveSpreadsheet();
+  // ふつうは getActiveSpreadsheet() で取れる。取れない呼ばれ方（Webhook など）に備えて、
+  // 初期設定のときに覚えた ID でも開けるようにしておく。
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss) return ss;
+  var id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  if (id) return SpreadsheetApp.openById(id);
+  throw new Error('スプレッドシートが見つかりません。スプレッドシートからメニューの「初期設定」を実行してください。');
 }
 
 function sheet_(name) {
@@ -447,6 +453,7 @@ function ensureSheet_(name, headers, rows) {
 }
 
 function setupSheets_() {
+  PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss_().getId());
   var st = ensureSheet_(SHEET.STUDENTS, STUDENT_HEADERS, [
     ['S001', '山田 太郎', '高2', '山田 花子', 'LINE＋メール', 'parent@example.com', '', '', '', '在籍'],
     ['S002', '佐藤 花', '中3', '佐藤 一郎', 'LINE', '', '', '', '', '在籍'],
@@ -615,14 +622,49 @@ function addReport_(a, submittedAt) {
   var id = 'R' + Utilities.formatDate(submittedAt, ss_().getSpreadsheetTimeZone(), 'yyyyMMdd-HHmmss') +
     '-' + Math.floor(Math.random() * 900 + 100);
 
-  var row = [submittedAt, id, STATUS.WAITING, false, checkAnswers_(a, findStudent_(st.id)), st.id];
-  QUESTIONS.forEach(function (q) { row.push(clean_(a[q.key])); });
-  row.push(text, describeDestination_(student), '', '');
-  sh.appendRow(row);
-  var r = sh.getLastRow();
-  sh.getRange(r, colOf_(sh, '承認')).insertCheckboxes();
-  sh.getRange(r, colOf_(sh, REPORT_TAIL[0])).setWrap(true);
-  return r;
+  var values = {};
+  values['受付日時'] = submittedAt;
+  values['報告ID'] = id;
+  values['ステータス'] = STATUS.WAITING;
+  values['承認'] = false;
+  values['要確認'] = checkAnswers_(a, findStudent_(st.id));
+  values['生徒ID'] = st.id;
+  QUESTIONS.forEach(function (q) { values[q.title] = clean_(a[q.key]); });
+  values[REPORT_TAIL[0]] = text;
+  values['送信先'] = describeDestination_(student);
+
+  // 同時に2件届いても同じ行に書かないよう、行を決めて書き終えるまでロックする
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var headers = ensureReportHeaders_(sh);
+    var r = sh.getLastRow() + 1;
+    var range = sh.getRange(r, 1, 1, headers.length);
+    // 回答は文字のまま入れる（「8/10」が日付に、「=」「+」で始まる文が数式に化けないように）
+    range.setNumberFormat('@');
+    sh.getRange(r, headers.indexOf('受付日時') + 1).setNumberFormat('yyyy/MM/dd HH:mm');
+    range.setValues([headers.map(function (h) { return values[h] === undefined ? '' : values[h]; })]);
+    sh.getRange(r, headers.indexOf('承認') + 1).insertCheckboxes();
+    sh.getRange(r, headers.indexOf(REPORT_TAIL[0]) + 1).setWrap(true);
+    return r;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * 報告書シートの見出しを確かめ、足りない列（質問を増やしたとき）は右端に足す。
+ * 列は見出しの名前で探すので、列の順番が変わっても正しい列に書き込まれる。
+ */
+function ensureReportHeaders_(sh) {
+  var last = sh.getLastColumn();
+  var headers = last ? sh.getRange(1, 1, 1, last).getValues()[0].map(String) : [];
+  reportHeaders_().forEach(function (h) {
+    if (headers.indexOf(h) >= 0) return;
+    headers.push(h);
+    sh.getRange(1, headers.length).setValue(h).setFontWeight('bold').setBackground('#e8f0fe');
+  });
+  return headers;
 }
 
 /** 報告書シートの1行から回答を読み戻す（本文の作り直し用）。 */
