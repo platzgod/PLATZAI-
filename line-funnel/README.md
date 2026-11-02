@@ -6,6 +6,7 @@
 固定費ゼロの構成：LINE Messaging API（無料プラン）＋ Cloudflare Workers / D1（無料枠）＋ Stripe（決済ごとの手数料のみ）
 
 初めて動かすときの準備（アカウント作成・トークン発行・Webhook設定）は **[docs/SETUP.md](docs/SETUP.md)** を上から順に進めてください。
+準備の進み具合と続きの手順は **[docs/HANDOVER.md](docs/HANDOVER.md)**（引き継ぎ資料）にまとめています。
 
 ## 配信シナリオ
 
