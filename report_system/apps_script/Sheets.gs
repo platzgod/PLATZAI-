@@ -94,7 +94,8 @@ function ensureSheet_(name, headers, rows) {
 function setupSheets_() {
   var st = ensureSheet_(SHEET.STUDENTS, STUDENT_HEADERS, [
     ['S001', '山田 太郎', '高2', '山田 花子', 'LINE＋メール', 'parent@example.com', '', '', '', '在籍'],
-    ['S002', '佐藤 花', '中3', '佐藤 一郎', 'LINE', '', '', '', '', '在籍']
+    ['S002', '佐藤 花', '中3', '佐藤 一郎', 'LINE', '', '', '', '', '在籍'],
+    ['S003', '鈴木 健', '小5', '鈴木 美香', 'LINE', '', '', '', '', '在籍']
   ]).sheet;
   var methodCol = colOf_(st, '送信方法');
   st.getRange(2, methodCol, 500, 1).setDataValidation(

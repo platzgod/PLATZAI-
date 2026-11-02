@@ -62,7 +62,7 @@ console.log('文面づくり');
   });
   test('本文：必要な項目が入り、申し送りは入らない', () => {
     const t = ctx.buildReportText_(SAMPLE, { '生徒名': '山田 太郎', '学年': '高2' },
-      { '塾名': '〇〇個別指導塾', '教室名': '駅前教室', '問い合わせ先': '0120-000-000' });
+      { '塾名': '個人指導塾PLATZ', '教室名': '', '問い合わせ先': '0120-000-000' });
     for (const s of ['山田 太郎さん（高2）', '2026年11月2日（月）', '科目：数学ⅠA　担当：佐藤 先生', '■ 数学ⅠA　理解度 ★★★★☆（4/5）', '・積極的に質問していた',
       '小テスト：8／10点', '前回の宿題：全部できていた', '■ 次回の授業　11月9日（月）', '■ ご連絡'])
       assert.ok(t.includes(s), '含まれない: ' + s);
@@ -88,6 +88,8 @@ console.log('文面づくり');
   test('要確認：区分と学年のずれ・同じ科目2回', () => {
     assert.strictEqual(ctx.checkAnswers_(SAMPLE, { '生徒ID': 'S001', '学年': '高2' }), '');
     assert.match(ctx.checkAnswers_({ ...SAMPLE, level: '中学生' }, { '生徒ID': 'S001', '学年': '高2' }), /合いません/);
+    assert.match(ctx.checkAnswers_({ ...SAMPLE, level: '中学生' }, { '生徒ID': 'S003', '学年': '小5' }), /合いません/);
+    assert.strictEqual(ctx.checkAnswers_({ ...SAMPLE, level: '小学生', subject1: '算数' }, { '生徒ID': 'S003', '学年': '小5' }), '');
     assert.match(ctx.checkAnswers_({ ...TWO, subject2: '数学ⅠA' }, { '生徒ID': 'S001', '学年': '高2' }), /同じ科目/);
     assert.match(ctx.checkAnswers_(SAMPLE, null), /生徒マスタにいない/);
   });
@@ -123,12 +125,13 @@ console.log('フォームの組み立て');
     }
     return seen;
   }
-  test('ページは 基本・1科目目(中/高)・2科目目・様子・宿題・コメント', () => {
-    assert.deepStrictEqual(pages.map(p => p.title), ['① 授業の基本情報', '② 1科目目（中学生）', '② 1科目目（高校生）',
+  test('ページは 基本・1科目目(小/中/高)・2科目目・様子・宿題・コメント', () => {
+    assert.deepStrictEqual(pages.map(p => p.title), ['① 授業の基本情報', '② 1科目目（小学生）', '② 1科目目（中学生）', '② 1科目目（高校生）',
       '②-2 2科目目', '③ 授業の様子・小テスト', '④ 宿題', '⑤ 講師コメント・連絡']);
   });
-  test('中学生ページには中学の科目、高校生ページには高校の科目', () => {
+  test('小学生ページには算数、中学生ページには中学の科目、高校生ページには高校の科目', () => {
     const sub = t => pageOf(pageTitled(t)).find(q => q.title === '科目（1科目目）').choices.map(c => c.value);
+    assert.ok(sub('② 1科目目（小学生）').includes('算数') && !sub('② 1科目目（小学生）').includes('数学'));
     assert.ok(sub('② 1科目目（中学生）').includes('理科') && !sub('② 1科目目（中学生）').includes('化学'));
     assert.ok(sub('② 1科目目（高校生）').includes('数学ⅠA') && !sub('② 1科目目（高校生）').includes('理科'));
   });
@@ -140,13 +143,19 @@ console.log('フォームの組み立て');
     assert.deepStrictEqual(walk({ '区分': '高校生', '2科目目': '英語' }),
       ['① 授業の基本情報', '② 1科目目（高校生）', '②-2 2科目目', '③ 授業の様子・小テスト', '④ 宿題', '⑤ 講師コメント・連絡']);
   });
+  test('小学生・2科目 → 小学生ページ → 2科目目ページ（2科目目も小学生の科目）', () => {
+    assert.deepStrictEqual(walk({ '区分': '小学生', '2科目目': '算数' }),
+      ['① 授業の基本情報', '② 1科目目（小学生）', '②-2 2科目目', '③ 授業の様子・小テスト', '④ 宿題', '⑤ 講師コメント・連絡']);
+    const second = pageOf(pageTitled('② 1科目目（小学生）')).find(q => q.title === '2科目目').choices.map(c => c.value);
+    assert.ok(second.includes('算数') && !second.includes('数学ⅠA'));
+  });
   test('中学生・2科目 → 高校生ページは通らない', () => {
     const w = walk({ '区分': '中学生', '2科目目': '数学' });
     assert.ok(w.includes('②-2 2科目目') && !w.includes('② 1科目目（高校生）'));
   });
   test('講師名・生徒名のプルダウンにマスタが入る', () => {
     const st = items.find(i => i.title === '生徒名').choices.map(c => c.value);
-    assert.deepStrictEqual([...st], ['S001 山田 太郎', 'S002 佐藤 花']);
+    assert.deepStrictEqual([...st], ['S001 山田 太郎', 'S002 佐藤 花', 'S003 鈴木 健']);
   });
 }
 

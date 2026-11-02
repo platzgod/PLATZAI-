@@ -140,9 +140,8 @@ function checkAnswers_(a, student) {
   var grade = student ? clean_(student['学年']) : '';
   var level = clean_(a.level);
   if (grade && level) {
-    var isJunior = /^中/.test(grade);
-    var isSenior = /^高/.test(grade);
-    if ((isJunior && level !== '中学生') || (isSenior && level !== '高校生'))
+    var expected = /^小/.test(grade) ? '小学生' : /^中/.test(grade) ? '中学生' : /^高/.test(grade) ? '高校生' : '';
+    if (expected && level !== expected)
       notes.push('区分（' + level + '）と学年（' + grade + '）が合いません');
   }
   if (hasSecond_(a) && clean_(a.subject2) === clean_(a.subject1)) notes.push('1科目目と2科目目が同じ科目です');
