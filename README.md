@@ -19,3 +19,9 @@ python3 builder/test_vba.py dist/合格一貫カリキュラム_マスターテ�
 - `builder/vba/` … VBA ソース（vbaProject.bin はここから生成）
 - `builder/vbaproject.py` … VBA プロジェクト（MS-OVBA / CFB）の生成
 - `builder/package.py` … .xlsx → .xlsm への変換とボタンの追加
+
+## 学習報告書 自動送信システム
+
+- `report_system/` … 授業後の学習報告書を、講師がスマホのフォームで答え → 教室長が確認 → 保護者の LINE／メールに自動送信（Google フォーム＋スプレッドシート＋Apps Script）
+- 質問と届く文面の見本：`report_system/学習報告書_質問票.md`、導入手順：`report_system/README.md`
+- テスト：`node report_system/test/run_tests.js`

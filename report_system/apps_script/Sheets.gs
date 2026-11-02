@@ -1,0 +1,249 @@
+/**
+ * 学習報告書システム — シートの読み書き・初期設定・フォーム作成
+ */
+
+function ss_() {
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function sheet_(name) {
+  var sh = ss_().getSheetByName(name);
+  if (!sh) throw new Error('シート「' + name + '」がありません。メニューの「初期設定」を実行してください。');
+  return sh;
+}
+
+/** 1行目を見出しとして読み、{ headers, rows: [{ _row: 行番号, 見出し: 値 }] } を返す。 */
+function readTable_(sh) {
+  var values = sh.getDataRange().getValues();
+  var headers = (values[0] || []).map(String);
+  var rows = [];
+  for (var i = 1; i < values.length; i++) {
+    var o = { _row: i + 1 };
+    headers.forEach(function (h, j) { o[h] = values[i][j]; });
+    rows.push(o);
+  }
+  return { headers: headers, rows: rows };
+}
+
+function colOf_(sh, header) {
+  var headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+  var c = headers.indexOf(header);
+  if (c < 0) throw new Error('シート「' + sh.getName() + '」に列「' + header + '」がありません');
+  return c + 1;
+}
+
+function setCell_(sh, row, header, value) {
+  sh.getRange(row, colOf_(sh, header)).setValue(value);
+}
+
+function settings_() {
+  var out = {};
+  var sh = ss_().getSheetByName(SHEET.SETTINGS);
+  if (!sh) return out;
+  sh.getDataRange().getValues().slice(1).forEach(function (r) {
+    if (String(r[0]).trim()) out[String(r[0]).trim()] = r[1];
+  });
+  return out;
+}
+
+function students_() {
+  return readTable_(sheet_(SHEET.STUDENTS)).rows.filter(function (s) { return String(s['生徒ID']).trim(); });
+}
+
+function activeStudents_() {
+  return students_().filter(function (s) { return String(s['在籍']).trim() !== '退塾'; });
+}
+
+function findStudent_(id) {
+  id = String(id).trim();
+  var hit = students_().filter(function (s) { return String(s['生徒ID']).trim() === id; });
+  return hit[0] || null;
+}
+
+function activeTeachers_() {
+  return readTable_(sheet_(SHEET.TEACHERS)).rows.filter(function (t) {
+    return String(t['講師名']).trim() && String(t['在籍']).trim() !== '退職';
+  });
+}
+
+function log_(reportId, studentName, channel, dest, result, detail) {
+  var sh = ss_().getSheetByName(SHEET.LOG);
+  if (!sh) return;
+  sh.appendRow([new Date(), reportId, studentName, channel, dest, result, detail || '']);
+}
+
+// ---------------------------------------------------------------- 初期設定
+
+function ensureSheet_(name, headers, rows) {
+  var ss = ss_();
+  var sh = ss.getSheetByName(name);
+  var created = false;
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    created = true;
+  }
+  if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setFontWeight('bold').setBackground('#e8f0fe');
+    sh.setFrozenRows(1);
+    if (rows && rows.length) sh.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+  }
+  return { sheet: sh, created: created };
+}
+
+function setupSheets_() {
+  var st = ensureSheet_(SHEET.STUDENTS, STUDENT_HEADERS, [
+    ['S001', '山田 太郎', '高2', '山田 花子', 'メール', 'parent@example.com', '', '', '', '在籍'],
+    ['S002', '佐藤 花', '中3', '佐藤 一郎', 'LINE', '', '', '', '', '在籍']
+  ]).sheet;
+  var methodCol = colOf_(st, '送信方法');
+  st.getRange(2, methodCol, 500, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(SEND_METHODS, true).build());
+  st.getRange(2, colOf_(st, '在籍'), 500, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(['在籍', '休塾', '退塾'], true).build());
+
+  ensureSheet_(SHEET.TEACHERS, TEACHER_HEADERS, [['佐藤 先生', '在籍'], ['鈴木 先生', '在籍']]);
+
+  var rep = ensureSheet_(SHEET.REPORTS, reportHeaders_(), null).sheet;
+  rep.setColumnWidth(colOf_(rep, REPORT_TAIL[0]), 420);
+  rep.getRange(1, colOf_(rep, '承認')).setBackground('#fde293')
+    .setNote('内容を確認したら✓を付けてください。保護者に送られます。');
+  rep.getRange(1, colOf_(rep, REPORT_TAIL[0])).setBackground('#fde293')
+    .setNote('ここを直すと、直した文面がそのまま送られます。');
+
+  var set = ensureSheet_(SHEET.SETTINGS, ['項目', '値', 'メモ'], SETTING_ROWS).sheet;
+  set.setColumnWidth(2, 360);
+  set.setColumnWidth(3, 360);
+
+  ensureSheet_(SHEET.LOG, ['日時', '報告ID', '生徒名', '送信方法', '宛先', '結果', '詳細'], null);
+
+  var first = ss_().getSheetByName('シート1') || ss_().getSheetByName('Sheet1');
+  if (first && first.getLastRow() === 0 && ss_().getSheets().length > 1) ss_().deleteSheet(first);
+}
+
+// ---------------------------------------------------------------- フォーム
+
+function form_() {
+  var id = PropertiesService.getScriptProperties().getProperty('FORM_ID');
+  if (!id) return null;
+  try { return FormApp.openById(id); } catch (e) { return null; }
+}
+
+function buildForm_() {
+  var props = PropertiesService.getScriptProperties();
+  var s = settings_();
+  var form = form_();
+  if (!form) {
+    form = FormApp.create((s['塾名'] || '') + ' 学習報告書（講師用）');
+    props.setProperty('FORM_ID', form.getId());
+    form.setDestination(FormApp.DestinationType.SPREADSHEET, ss_().getId());
+  }
+  form.getItems().forEach(function (it) { form.deleteItem(it); });
+
+  form.setTitle((s['塾名'] || '') + ' 学習報告書（講師用）')
+    .setDescription('授業が終わったら答えてください（3分ほど）。教室長が確認してから保護者に届きます。')
+    .setConfirmationMessage('送信しました。教室長の確認後に保護者へ届きます。')
+    .setShowLinkToRespondAgain(true)
+    .setAllowResponseEdits(false)
+    .setProgressBar(true);
+
+  var first = true;
+  QUESTIONS.forEach(function (q) {
+    if (q.section) {
+      if (first) form.addSectionHeaderItem().setTitle(q.section);
+      else form.addPageBreakItem().setTitle(q.section);
+      first = false;
+    }
+    var item;
+    switch (q.type) {
+      case 'list': item = form.addListItem(); break;
+      case 'date': item = form.addDateItem(); break;
+      case 'text': item = form.addTextItem(); break;
+      case 'paragraph': item = form.addParagraphTextItem(); break;
+      case 'scale': item = form.addScaleItem().setBounds(q.min, q.max).setLabels(q.minLabel, q.maxLabel); break;
+      case 'choice': item = form.addMultipleChoiceItem().setChoiceValues(q.options); break;
+      case 'checkbox': item = form.addCheckboxItem().setChoiceValues(q.options); break;
+      default: throw new Error('未知の質問タイプ: ' + q.type);
+    }
+    item.setTitle(q.title);
+    if (q.help) item.setHelpText(q.help);
+    if (q.required) item.setRequired(true);
+  });
+  refreshChoices_(form);
+  return form;
+}
+
+/** 講師名・生徒名のプルダウンを、講師マスタ・生徒マスタの在籍者で更新する。 */
+function refreshChoices_(form) {
+  form = form || form_();
+  if (!form) return;
+  var lists = {
+    teachers: activeTeachers_().map(function (t) { return String(t['講師名']).trim(); }),
+    students: activeStudents_().map(studentChoiceLabel_)
+  };
+  QUESTIONS.filter(function (q) { return q.type === 'list'; }).forEach(function (q) {
+    var item = form.getItems(FormApp.ItemType.LIST).filter(function (it) { return it.getTitle() === q.title; })[0];
+    if (!item) return;
+    var values = lists[q.source];
+    item.asListItem().setChoiceValues(values.length ? values : ['（マスタに登録してください）']);
+  });
+}
+
+function installTriggers_(form) {
+  var handlers = ['onFormSubmitHandler', 'onSheetEditHandler'];
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (handlers.indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('onFormSubmitHandler').forForm(form).onFormSubmit().create();
+  ScriptApp.newTrigger('onSheetEditHandler').forSpreadsheet(ss_()).onEdit().create();
+}
+
+// ---------------------------------------------------------------- 回答の受け取り
+
+/** フォームの回答 → QUESTIONS の key ごとの値 */
+function answersFromResponse_(response) {
+  var byTitle = {};
+  response.getItemResponses().forEach(function (ir) {
+    byTitle[ir.getItem().getTitle()] = ir.getResponse();
+  });
+  var a = {};
+  QUESTIONS.forEach(function (q) { a[q.key] = byTitle[q.title] === undefined ? '' : byTitle[q.title]; });
+  return a;
+}
+
+/** 回答を報告書シートに1行追加する（ここではまだ送らない）。 */
+function addReport_(a, submittedAt) {
+  var sh = sheet_(SHEET.REPORTS);
+  var st = parseStudentChoice_(a.student);
+  var student = findStudent_(st.id) || { '生徒ID': st.id, '生徒名': st.name };
+  var text = buildReportText_(a, student, settings_());
+  var id = 'R' + Utilities.formatDate(submittedAt, Session.getScriptTimeZone(), 'yyyyMMdd-HHmmss') +
+    '-' + Math.floor(Math.random() * 900 + 100);
+
+  var row = [submittedAt, id, STATUS.WAITING, false, st.id];
+  QUESTIONS.forEach(function (q) { row.push(clean_(a[q.key])); });
+  row.push(text, describeDestination_(student), '', '');
+  sh.appendRow(row);
+  var r = sh.getLastRow();
+  sh.getRange(r, colOf_(sh, '承認')).insertCheckboxes();
+  sh.getRange(r, colOf_(sh, REPORT_TAIL[0])).setWrap(true);
+  return r;
+}
+
+/** 報告書シートの1行から回答を読み戻す（本文の作り直し用）。 */
+function answersFromRow_(rowObj) {
+  var a = {};
+  QUESTIONS.forEach(function (q) {
+    var v = rowObj[q.title];
+    a[q.key] = (q.type === 'checkbox') ? clean_(v).split(/、/) : v;
+  });
+  return a;
+}
+
+function describeDestination_(student) {
+  var t = sendTargets_(student['送信方法']);
+  var parts = [];
+  if (t.line) parts.push(splitIds_(student['LINEユーザーID']).length ? 'LINE' : 'LINE（未連携）');
+  if (t.mail) parts.push(clean_(student['メールアドレス']) ? 'メール' : 'メール（アドレスなし）');
+  return parts.join(' / ') || '送らない';
+}
