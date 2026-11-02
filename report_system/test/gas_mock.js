@@ -51,7 +51,37 @@ function makeEnv() {
   };
   const builder = () => { const b = { requireValueInList: () => b, build: () => ({}) }; return b; };
 
+  // FormApp：並んだ項目と分岐を記録するだけ
+  const form = { items: [], props: {} };
+  const mkItem = (kind) => {
+    const it = { kind, title: '', choices: [], required: false };
+    const api = {
+      _it: it,
+      setTitle(t) { it.title = t; return api; }, getTitle: () => it.title,
+      setHelpText() { return api; }, setRequired(b) { it.required = b; return api; },
+      setBounds() { return api; }, setLabels() { return api; },
+      setChoiceValues(v) { it.choices = v.map(value => ({ value, go: null })); return api; },
+      createChoice: (value, go) => ({ value, go: go ? go._it : null }),
+      setChoices(c) { it.choices = c; return api; },
+      asListItem: () => api
+    };
+    form.items.push(it);
+    return api;
+  };
+  const formApi = {
+    getId: () => 'FORM_ID', setDestination() {},
+    getItems: (type) => form.items.filter(i => !type || i.kind === type).map(i => ({ getTitle: () => i.title, asListItem: () => ({ setChoiceValues: v => { i.choices = v.map(value => ({ value })); } }) })),
+    deleteItem() {},
+    setTitle() { return formApi; }, setDescription() { return formApi; }, setConfirmationMessage() { return formApi; },
+    setShowLinkToRespondAgain() { return formApi; }, setAllowResponseEdits() { return formApi; }, setProgressBar() { return formApi; },
+    addSectionHeaderItem: () => mkItem('header'), addPageBreakItem: () => mkItem('page'),
+    addListItem: () => mkItem('LIST'), addDateItem: () => mkItem('date'), addTextItem: () => mkItem('text'),
+    addParagraphTextItem: () => mkItem('paragraph'), addScaleItem: () => mkItem('scale'),
+    addMultipleChoiceItem: () => mkItem('choice'), addCheckboxItem: () => mkItem('checkbox')
+  };
+
   const g = {
+    FormApp: { create: () => formApi, openById: () => formApi, DestinationType: { SPREADSHEET: 1 }, ItemType: { LIST: 'LIST' } },
     console,
     SpreadsheetApp: { getActiveSpreadsheet: () => ss, newDataValidation: builder },
     PropertiesService: { getScriptProperties: () => ({
@@ -78,7 +108,7 @@ function makeEnv() {
     ContentService: { createTextOutput: t => ({ text: t }) },
     ScriptApp: { getProjectTriggers: () => [], deleteTrigger() {}, newTrigger: () => ({}) }
   };
-  return { g, calls, fetchHandlers, props, ss, sheets };
+  return { g, calls, fetchHandlers, props, ss, sheets, form };
 }
 
 module.exports = { makeEnv };

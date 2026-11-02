@@ -93,7 +93,7 @@ function ensureSheet_(name, headers, rows) {
 
 function setupSheets_() {
   var st = ensureSheet_(SHEET.STUDENTS, STUDENT_HEADERS, [
-    ['S001', '山田 太郎', '高2', '山田 花子', 'メール', 'parent@example.com', '', '', '', '在籍'],
+    ['S001', '山田 太郎', '高2', '山田 花子', 'LINE＋メール', 'parent@example.com', '', '', '', '在籍'],
     ['S002', '佐藤 花', '中3', '佐藤 一郎', 'LINE', '', '', '', '', '在籍']
   ]).sheet;
   var methodCol = colOf_(st, '送信方法');
@@ -108,6 +108,7 @@ function setupSheets_() {
   rep.setColumnWidth(colOf_(rep, REPORT_TAIL[0]), 420);
   rep.getRange(1, colOf_(rep, '承認')).setBackground('#fde293')
     .setNote('内容を確認したら✓を付けてください。保護者に送られます。');
+  rep.getRange(1, colOf_(rep, '要確認')).setNote('区分と学年が合わないなど、確認してほしい点が出ます（送信は止めません）。');
   rep.getRange(1, colOf_(rep, REPORT_TAIL[0])).setBackground('#fde293')
     .setNote('ここを直すと、直した文面がそのまま送られます。');
 
@@ -147,30 +148,68 @@ function buildForm_() {
     .setAllowResponseEdits(false)
     .setProgressBar(true);
 
-  var first = true;
-  QUESTIONS.forEach(function (q) {
-    if (q.section) {
-      if (first) form.addSectionHeaderItem().setTitle(q.section);
-      else form.addPageBreakItem().setTitle(q.section);
-      first = false;
-    }
-    var item;
-    switch (q.type) {
-      case 'list': item = form.addListItem(); break;
-      case 'date': item = form.addDateItem(); break;
-      case 'text': item = form.addTextItem(); break;
-      case 'paragraph': item = form.addParagraphTextItem(); break;
-      case 'scale': item = form.addScaleItem().setBounds(q.min, q.max).setLabels(q.minLabel, q.maxLabel); break;
-      case 'choice': item = form.addMultipleChoiceItem().setChoiceValues(q.options); break;
-      case 'checkbox': item = form.addCheckboxItem().setChoiceValues(q.options); break;
-      default: throw new Error('未知の質問タイプ: ' + q.type);
-    }
-    item.setTitle(q.title);
-    if (q.help) item.setHelpText(q.help);
-    if (q.required) item.setRequired(true);
+  // 1) ページと質問を並べる。分岐する質問は、行き先のページができてから選択肢を入れる。
+  var pageBreak = {};   // 'first:中学生' / 'second' / 'state' … → PageBreakItem
+  var branchItems = []; // { q, item, level }
+  PAGES.forEach(function (page, i) {
+    var variants = page.perLevel ? LEVELS : [null];
+    variants.forEach(function (level) {
+      var title = page.title + (level ? '（' + level + '）' : '');
+      if (i === 0) {
+        form.addSectionHeaderItem().setTitle(title);
+      } else {
+        var pb = form.addPageBreakItem().setTitle(title);
+        if (page.help) pb.setHelpText(page.help);
+        pageBreak[page.id + (level ? ':' + level : '')] = pb;
+      }
+      QUESTIONS.filter(function (q) { return q.page === page.id; }).forEach(function (q) {
+        var item = addQuestion_(form, q, level);
+        if (q.branch) branchItems.push({ q: q, item: item, level: level });
+      });
+    });
   });
+
+  // 2) 分岐の行き先を入れる
+  branchItems.forEach(function (b) {
+    var choices;
+    if (b.q.branch === 'level') {
+      choices = LEVELS.map(function (lv) { return b.item.createChoice(lv, pageBreak['first:' + lv]); });
+    } else if (b.q.branch === 'second') {
+      choices = [b.item.createChoice(NO_SECOND, pageBreak.state)].concat(
+        SUBJECTS_BY_LEVEL[b.level].map(function (sub) { return b.item.createChoice(sub, pageBreak.second); }));
+    }
+    b.item.setChoices(choices);
+  });
+
   refreshChoices_(form);
   return form;
+}
+
+function optionsFor_(q, level) {
+  if (q.options === 'levels') return LEVELS;
+  if (q.options === 'subjects') return SUBJECTS_BY_LEVEL[level] || [];
+  return q.options;
+}
+
+function addQuestion_(form, q, level) {
+  var item;
+  switch (q.type) {
+    case 'list': item = form.addListItem(); break;
+    case 'date': item = form.addDateItem(); break;
+    case 'text': item = form.addTextItem(); break;
+    case 'paragraph': item = form.addParagraphTextItem(); break;
+    case 'scale': item = form.addScaleItem().setBounds(q.min, q.max).setLabels(q.minLabel, q.maxLabel); break;
+    case 'choice': item = form.addMultipleChoiceItem(); break;
+    case 'checkbox': item = form.addCheckboxItem(); break;
+    default: throw new Error('未知の質問タイプ: ' + q.type);
+  }
+  if (q.options && !q.branch && (q.type === 'list' || q.type === 'choice' || q.type === 'checkbox')) {
+    item.setChoiceValues(optionsFor_(q, level));
+  }
+  item.setTitle(q.title);
+  if (q.help) item.setHelpText(q.help);
+  if (q.required) item.setRequired(true);
+  return item;
 }
 
 /** 講師名・生徒名のプルダウンを、講師マスタ・生徒マスタの在籍者で更新する。 */
@@ -181,7 +220,7 @@ function refreshChoices_(form) {
     teachers: activeTeachers_().map(function (t) { return String(t['講師名']).trim(); }),
     students: activeStudents_().map(studentChoiceLabel_)
   };
-  QUESTIONS.filter(function (q) { return q.type === 'list'; }).forEach(function (q) {
+  QUESTIONS.filter(function (q) { return q.source; }).forEach(function (q) {
     var item = form.getItems(FormApp.ItemType.LIST).filter(function (it) { return it.getTitle() === q.title; })[0];
     if (!item) return;
     var values = lists[q.source];
@@ -220,7 +259,7 @@ function addReport_(a, submittedAt) {
   var id = 'R' + Utilities.formatDate(submittedAt, Session.getScriptTimeZone(), 'yyyyMMdd-HHmmss') +
     '-' + Math.floor(Math.random() * 900 + 100);
 
-  var row = [submittedAt, id, STATUS.WAITING, false, st.id];
+  var row = [submittedAt, id, STATUS.WAITING, false, checkAnswers_(a, findStudent_(st.id)), st.id];
   QUESTIONS.forEach(function (q) { row.push(clean_(a[q.key])); });
   row.push(text, describeDestination_(student), '', '');
   sh.appendRow(row);

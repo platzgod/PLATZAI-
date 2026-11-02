@@ -42,6 +42,30 @@ function studentChoiceLabel_(student) {
   return student['生徒ID'] + ' ' + student['生徒名'];
 }
 
+/** 回答から科目ごとのまとまりを取り出す（1〜2科目）。 */
+function subjectBlocks_(a) {
+  var blocks = [{
+    subject: clean_(a.subject1), content: a.content1, material: a.material1,
+    understanding: a.understanding1, good: a.good1, issue: a.issue1
+  }];
+  if (hasSecond_(a)) {
+    blocks.push({
+      subject: clean_(a.subject2), content: a.content2, material: a.material2,
+      understanding: a.understanding2, good: a.good2, issue: a.issue2
+    });
+  }
+  return blocks;
+}
+
+function hasSecond_(a) {
+  var s = clean_(a.subject2);
+  return s !== '' && s !== NO_SECOND;
+}
+
+function subjectNames_(a) {
+  return subjectBlocks_(a).map(function (b) { return b.subject; }).filter(String).join('・');
+}
+
 /**
  * 保護者に送る本文をつくる。
  * @param {Object} a 回答（QUESTIONS の key → 値）
@@ -58,22 +82,21 @@ function buildReportText_(a, student, settings) {
   push('━━━━━━━━━━━━');
   push(name + 'さん' + (grade ? '（' + grade + '）' : ''));
   push('授業日：' + formatDateJa_(a.date, true));
-  push('科目：' + clean_(a.subject) + '　担当：' + clean_(a.teacher));
+  push('科目：' + subjectNames_(a) + '　担当：' + clean_(a.teacher));
   push('');
 
-  push('■ 今日の学習内容');
-  push(clean_(a.content));
-  if (clean_(a.material)) push('教材：' + clean_(a.material));
-  push('');
-
-  push('■ 理解度　' + stars_(a.understanding));
-  push('◎ できたこと');
-  push(clean_(a.good));
-  if (clean_(a.issue)) {
-    push('△ これからの課題');
-    push(clean_(a.issue));
-  }
-  push('');
+  subjectBlocks_(a).forEach(function (b) {
+    push('■ ' + b.subject + '　理解度 ' + stars_(b.understanding));
+    push('【学習内容】' + clean_(b.content));
+    if (clean_(b.material)) push('【教材】' + clean_(b.material));
+    push('◎ できたこと');
+    push(clean_(b.good));
+    if (clean_(b.issue)) {
+      push('△ これからの課題');
+      push(clean_(b.issue));
+    }
+    push('');
+  });
 
   push('■ 授業の様子');
   push('授業態度：' + clean_(a.attitude));
@@ -110,6 +133,22 @@ function buildReportText_(a, student, settings) {
   return L.join('\n');
 }
 
+/** 教室長に確認してほしい点（送信は止めない。報告書シートの「要確認」列に出す）。 */
+function checkAnswers_(a, student) {
+  var notes = [];
+  if (!student || !clean_(student['生徒ID'])) notes.push('生徒マスタにいない生徒です');
+  var grade = student ? clean_(student['学年']) : '';
+  var level = clean_(a.level);
+  if (grade && level) {
+    var isJunior = /^中/.test(grade);
+    var isSenior = /^高/.test(grade);
+    if ((isJunior && level !== '中学生') || (isSenior && level !== '高校生'))
+      notes.push('区分（' + level + '）と学年（' + grade + '）が合いません');
+  }
+  if (hasSecond_(a) && clean_(a.subject2) === clean_(a.subject1)) notes.push('1科目目と2科目目が同じ科目です');
+  return notes.join('\n');
+}
+
 /** 「8/10」→「8／10点」。それ以外はそのまま。 */
 function formatScore_(s) {
   var hit = clean_(s).match(/^(\d+(?:\.\d+)?)\s*[\/／]\s*(\d+(?:\.\d+)?)\s*点?$/);
@@ -121,7 +160,7 @@ function fillTemplate_(tpl, a, student) {
   return clean_(tpl)
     .replace(/\{生徒名\}/g, clean_(student['生徒名']) || parseStudentChoice_(a.student).name)
     .replace(/\{授業日\}/g, formatDateJa_(a.date, false))
-    .replace(/\{科目\}/g, clean_(a.subject));
+    .replace(/\{科目\}/g, subjectNames_(a));
 }
 
 /** 全角英数を半角に、小文字を大文字に、空白を除く（連携コードの照合用）。 */

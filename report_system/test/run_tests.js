@@ -31,16 +31,20 @@ function test(name, fn) {
 }
 
 const SAMPLE = {
-  teacher: '佐藤 先生', student: 'S001 山田 太郎', date: '2026-11-02', subject: '数学',
-  content: '二次関数の最大・最小（定義域に文字を含む場合分け）', material: '青チャート数I p.112〜118',
-  understanding: '4', good: '軸と定義域の位置関係を図に描いて、3通りの場合分けを自分で整理できました。',
-  issue: '場合分けの境目（等号を含むか）で迷うことがあります。次回、類題で確認します。',
+  teacher: '佐藤 先生', student: 'S001 山田 太郎', date: '2026-11-02', level: '高校生', subject1: '数学ⅠA',
+  content1: '二次関数の最大・最小（定義域に文字を含む場合分け）', material1: '青チャート数I p.112〜118',
+  understanding1: '4', good1: '軸と定義域の位置関係を図に描いて、3通りの場合分けを自分で整理できました。',
+  issue1: '場合分けの境目（等号を含むか）で迷うことがあります。次回、類題で確認します。',
+  subject2: 'なし（1科目だけ）',
   attitude: '良い', state: ['集中して取り組んでいた', '積極的に質問していた'], test: '8/10',
   hwPrev: '全部できていた', hwNext: '青チャート p.119〜121 の例題をノートに解く',
   comment: '先週より解く手が止まらなくなってきました。ご家庭でも「図を描いてる？」と声をかけてみてください。',
   nextDate: '2026-11-09', notice: '11月16日（月）は教室休業日のため、振替をご相談させてください。',
   memo: '模試の申込がまだ'
 };
+
+const TWO = { ...SAMPLE, subject2: '英語', content2: '関係代名詞 what の用法', material2: 'Next Stage p.88〜90',
+  understanding2: '3', good2: '例文を自分で言い換えられるようになりました。', issue2: '' };
 
 console.log('文面づくり');
 {
@@ -59,21 +63,90 @@ console.log('文面づくり');
   test('本文：必要な項目が入り、申し送りは入らない', () => {
     const t = ctx.buildReportText_(SAMPLE, { '生徒名': '山田 太郎', '学年': '高2' },
       { '塾名': '〇〇個別指導塾', '教室名': '駅前教室', '問い合わせ先': '0120-000-000' });
-    for (const s of ['山田 太郎さん（高2）', '2026年11月2日（月）', '★★★★☆（4/5）', '・積極的に質問していた',
+    for (const s of ['山田 太郎さん（高2）', '2026年11月2日（月）', '科目：数学ⅠA　担当：佐藤 先生', '■ 数学ⅠA　理解度 ★★★★☆（4/5）', '・積極的に質問していた',
       '小テスト：8／10点', '前回の宿題：全部できていた', '■ 次回の授業　11月9日（月）', '■ ご連絡'])
       assert.ok(t.includes(s), '含まれない: ' + s);
     assert.ok(!t.includes('模試の申込'), '申し送りが保護者向け本文に入っている');
+    assert.ok(!t.includes('なし（1科目だけ）'));
     fs.writeFileSync(path.join(__dirname, '..', '見本_送信される文面.txt'), t + '\n');
   });
   test('本文：任意項目が空なら見出しごと省く', () => {
-    const a = { ...SAMPLE, issue: '', test: '', hwNext: '', nextDate: '', notice: '', state: [] };
+    const a = { ...SAMPLE, issue1: '', test: '', hwNext: '', nextDate: '', notice: '', state: [] };
     const t = ctx.buildReportText_(a, { '生徒名': '山田 太郎' }, {});
     for (const s of ['△ これからの課題', '小テスト', '次回までの宿題', '■ 次回の授業', '■ ご連絡'])
       assert.ok(!t.includes(s), '残っている: ' + s);
   });
+  test('2科目：科目ごとにまとまり、件名にも両方が入る', () => {
+    const t = ctx.buildReportText_(TWO, { '生徒名': '山田 太郎', '学年': '高2' }, {});
+    fs.writeFileSync(path.join(__dirname, '..', '見本_送信される文面_2科目.txt'), t + '\n');
+    assert.ok(t.includes('科目：数学ⅠA・英語'));
+    assert.ok(t.indexOf('■ 数学ⅠA') < t.indexOf('■ 英語　理解度 ★★★☆☆（3/5）'));
+    assert.ok(t.includes('【学習内容】関係代名詞 what の用法'));
+    assert.strictEqual((t.match(/△ これからの課題/g) || []).length, 1);
+    assert.strictEqual(ctx.fillTemplate_('{生徒名} {科目}', TWO, { '生徒名': '山田 太郎' }), '山田 太郎 数学ⅠA・英語');
+  });
+  test('要確認：区分と学年のずれ・同じ科目2回', () => {
+    assert.strictEqual(ctx.checkAnswers_(SAMPLE, { '生徒ID': 'S001', '学年': '高2' }), '');
+    assert.match(ctx.checkAnswers_({ ...SAMPLE, level: '中学生' }, { '生徒ID': 'S001', '学年': '高2' }), /合いません/);
+    assert.match(ctx.checkAnswers_({ ...TWO, subject2: '数学ⅠA' }, { '生徒ID': 'S001', '学年': '高2' }), /同じ科目/);
+    assert.match(ctx.checkAnswers_(SAMPLE, null), /生徒マスタにいない/);
+  });
   test('長文は LINE の 5000 文字制限内に分割', () => {
     const parts = ctx.splitForLine_(('あ'.repeat(3000) + '\n\n').repeat(4));
     assert.ok(parts.length >= 3 && parts.every(p => p.text.length <= 5000));
+  });
+}
+
+console.log('フォームの組み立て');
+{
+  const { ctx, form } = load();
+  ctx.setupSheets_();
+  ctx.buildForm_();
+  const items = form.items;
+  const pages = items.filter(i => i.kind === 'page' || i.kind === 'header');
+  // ページの中の質問を返す
+  const pageOf = p => { const i = items.indexOf(p); const out = [];
+    for (let j = i + 1; j < items.length && items[j].kind !== 'page'; j++) out.push(items[j]); return out; };
+  const pageTitled = t => pages.find(p => p.title === t);
+  // 回答をたどって、通るページの一覧を返す（Googleフォームと同じ進み方）
+  function walk(answers) {
+    const seen = [];
+    let p = pages[0];
+    while (p) {
+      seen.push(p.title);
+      let next = pages[pages.indexOf(p) + 1] || null;
+      for (const q of pageOf(p)) {
+        const c = q.choices.find(c => c.go && c.value === answers[q.title]);
+        if (c) next = c.go;
+      }
+      p = next;
+    }
+    return seen;
+  }
+  test('ページは 基本・1科目目(中/高)・2科目目・様子・宿題・コメント', () => {
+    assert.deepStrictEqual(pages.map(p => p.title), ['① 授業の基本情報', '② 1科目目（中学生）', '② 1科目目（高校生）',
+      '②-2 2科目目', '③ 授業の様子・小テスト', '④ 宿題', '⑤ 講師コメント・連絡']);
+  });
+  test('中学生ページには中学の科目、高校生ページには高校の科目', () => {
+    const sub = t => pageOf(pageTitled(t)).find(q => q.title === '科目（1科目目）').choices.map(c => c.value);
+    assert.ok(sub('② 1科目目（中学生）').includes('理科') && !sub('② 1科目目（中学生）').includes('化学'));
+    assert.ok(sub('② 1科目目（高校生）').includes('数学ⅠA') && !sub('② 1科目目（高校生）').includes('理科'));
+  });
+  test('中学生・1科目 → 中学生ページだけ通り、2科目目ページは飛ばす', () => {
+    assert.deepStrictEqual(walk({ '区分': '中学生', '2科目目': 'なし（1科目だけ）' }),
+      ['① 授業の基本情報', '② 1科目目（中学生）', '③ 授業の様子・小テスト', '④ 宿題', '⑤ 講師コメント・連絡']);
+  });
+  test('高校生・2科目 → 高校生ページ → 2科目目ページ', () => {
+    assert.deepStrictEqual(walk({ '区分': '高校生', '2科目目': '英語' }),
+      ['① 授業の基本情報', '② 1科目目（高校生）', '②-2 2科目目', '③ 授業の様子・小テスト', '④ 宿題', '⑤ 講師コメント・連絡']);
+  });
+  test('中学生・2科目 → 高校生ページは通らない', () => {
+    const w = walk({ '区分': '中学生', '2科目目': '数学' });
+    assert.ok(w.includes('②-2 2科目目') && !w.includes('② 1科目目（高校生）'));
+  });
+  test('講師名・生徒名のプルダウンにマスタが入る', () => {
+    const st = items.find(i => i.title === '生徒名').choices.map(c => c.value);
+    assert.deepStrictEqual([...st], ['S001 山田 太郎', 'S002 佐藤 花']);
   });
 }
 
@@ -82,6 +155,7 @@ console.log('通しの流れ');
   const { ctx, calls, fetchHandlers, sheets } = load();
   ctx.setupSheets_();
   const sh = n => sheets.find(s => s.name === n);
+  ctx.setCell_(sh('生徒マスタ'), 2, '送信方法', 'メール');
   test('初期設定でシートができる', () => {
     for (const n of ['生徒マスタ', '講師マスタ', '報告書', '設定', '送信ログ']) assert.ok(sh(n), n);
     assert.ok(!sh('シート1'));
@@ -137,11 +211,14 @@ console.log('通しの流れ');
   test('フォーム送信 → 確認待ちで1行追加（まだ送らない）', () => {
     const before = { f: calls.fetch.length, m: calls.mail.length };
     ctx.onFormSubmitHandler({ response: fakeResponse(SAMPLE, ctx) });
-    ctx.onFormSubmitHandler({ response: fakeResponse({ ...SAMPLE, student: 'S002 佐藤 花', subject: '英語' }, ctx) });
+    ctx.onFormSubmitHandler({ response: fakeResponse({ ...TWO, student: 'S002 佐藤 花', level: '中学生', subject1: '数学' }, ctx) });
     assert.strictEqual(rep.getLastRow(), 3);
     assert.strictEqual(cell(2, 'ステータス'), '確認待ち');
     assert.strictEqual(cell(2, '承認'), false);
     assert.strictEqual(cell(2, '生徒ID'), 'S001');
+    assert.strictEqual(cell(2, '要確認'), '');
+    assert.strictEqual(cell(3, '2科目目'), '英語');
+    assert.ok(cell(3, ctx.REPORT_TAIL[0]).includes('科目：数学・英語'));
     assert.strictEqual(cell(2, '送信先'), 'メール');
     assert.strictEqual(cell(3, '送信先'), 'LINE');
     assert.strictEqual(cell(2, '授業中の様子（当てはまるものすべて）'), '集中して取り組んでいた、積極的に質問していた');
