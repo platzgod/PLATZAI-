@@ -19,3 +19,9 @@ python3 builder/test_vba.py dist/合格一貫カリキュラム_マスターテ�
 - `builder/vba/` … VBA ソース（vbaProject.bin はここから生成）
 - `builder/vbaproject.py` … VBA プロジェクト（MS-OVBA / CFB）の生成
 - `builder/package.py` … .xlsx → .xlsm への変換とボタンの追加
+
+## 英検3級 面接トレーナー（`eiken3/`）
+
+- `eiken3/index.html` … ダウンロードして Chrome で開くだけで動く（音声認識・読み上げつき、無料・サーバー不要）
+- `eiken3/app.html` … 本体（Artifact 公開用）。編集後は `python3 eiken3/build.py` で `index.html` を作り直す
+- 問題カード4枚はすべてオリジナル（過去問は使っていない）。音声認識が使えない環境では自己チェックモードで動く
