@@ -54,6 +54,7 @@ body {
   padding-block: 20px 40px;
 }
 .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 20px; }
+section.wrap { width: 100%; }
 h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.35; }
 h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: .01em; }
 h2 { font-size: 1.15rem; font-weight: 700; }
@@ -185,6 +186,58 @@ textarea { width: 100%; font: inherit; font-family: var(--font-card); font-size:
 .status:has(#fb:not([hidden])) #live, .status:has(#fb:not([hidden])) .row:has(#doneBtn) { display: none; }
 .fbhead { display: flex; align-items: center; gap: 10px; }
 .fbhead .g { width: 2em; height: 2em; border-radius: 50%; display: grid; place-items: center; font-weight: 700; }
+.eyebrow { font-size: .78rem; letter-spacing: .06em; color: var(--accent); font-weight: 700; }
+.plan { list-style: none; margin: 0; padding: 0; display: flex; gap: 3px; }
+.plan li { min-width: 0; border-top: 5px solid var(--line); padding-top: 4px; font-size: .78rem; line-height: 1.35; }
+.plan li b { display: block; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plan li span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.plan li:first-child { border-top-color: var(--accent); }
+.plan li:not(:first-child) { border-top-color: var(--mark); }
+.ltimer .plan li { border-top-color: var(--line); }
+.ltimer .plan li.done { border-top-color: var(--good); }
+.ltimer .plan li.now { border-top-color: var(--accent); }
+.ltimer .plan li.now b { color: var(--accent); }
+.ltimer .plan li.over { border-top-color: var(--warn); }
+.ltimer { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 16px; display: grid; gap: 6px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+.lt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.lt-clock { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lt-clock small { font-size: .8rem; color: var(--muted); font-weight: 500; }
+.lt-clock.over { color: var(--warn); }
+.lesson-panel { border-color: var(--accent); }
+.lh { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; }
+@media (max-width: 760px) { .lh { grid-template-columns: minmax(0, 1fr); } }
+.lh-main, .lh-side { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.lh-no { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--accent); }
+.lh-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lh-card { display: grid; gap: 4px; font-size: .85rem; }
+.lh-card svg { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 4px; display: block; }
+.lh-card b { font-family: var(--font-card); font-weight: 600; }
+.goal { background: var(--accent-soft); border-radius: 8px; padding: 8px 12px; font-weight: 500; }
+.hw { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: .92rem; }
+.hw li { display: flex; gap: 8px; align-items: start; }
+.hw label { display: flex; gap: 8px; align-items: start; cursor: pointer; }
+.hw input { margin-top: 6px; accent-color: var(--accent); }
+.hw .box { flex: none; width: 14px; height: 14px; border: 1.5px solid var(--muted); border-radius: 3px; margin-top: 6px; }
+.coach { display: grid; gap: 8px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 12px; }
+.fbgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 700px) { .fbgrid { grid-template-columns: minmax(0, 1fr); } }
+.fbside { display: grid; gap: 10px; }
+.tablewrap { overflow-x: auto; }
+.fbt { border-collapse: collapse; width: 100%; font-size: .9rem; }
+.fbt th, .fbt td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: center; }
+.fbt tbody th { text-align: left; font-weight: 500; white-space: nowrap; }
+.fbt thead th { font-size: .8rem; color: var(--muted); font-weight: 700; }
+.fbt thead th span { font-family: var(--font-card); color: var(--fg); font-weight: 600; }
+.mk { display: inline-grid; place-items: center; width: 1.9em; height: 1.9em; border-radius: 50%; font-weight: 700; }
+.mk.good { background: var(--good-soft); color: var(--good); }
+.mk.fair { background: var(--warn-soft); color: var(--warn); }
+.mk.poor, .mk.none { background: var(--bad-soft); color: var(--bad); }
+.mk.self { background: var(--bg); color: var(--muted); }
+.fixes { display: grid; gap: 8px; }
+.fixrow { display: grid; grid-template-columns: 9em auto auto auto minmax(0, 1fr); gap: 10px; align-items: center; font-size: .9rem; }
+@media (max-width: 560px) { .fixrow { grid-template-columns: 7em auto auto auto; } .fixrow .small { grid-column: 1 / -1; } }
+.arrow { color: var(--muted); }
+details.panel > summary { cursor: pointer; }
 footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
 </style>
 
@@ -196,6 +249,7 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
     </div>
     <label class="toggle" id="subWrap" hidden><input type="checkbox" id="subToggle" checked> 面接委員の英文を表示</label>
   </header>
+  <div class="ltimer" id="ltimer" hidden></div>
 
   <!-- HOME -->
   <section id="home" class="wrap" style="gap:20px">
@@ -208,8 +262,13 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
       <p class="small muted" id="envNote"></p>
     </div>
 
+    <div class="panel lesson-panel">
+      <h2>授業（1回20分）</h2>
+      <div id="lessonHome"></div>
+    </div>
+
     <div class="panel">
-      <h2>問題カードを選ぶ</h2>
+      <h2>本番練習（カードを選ぶ）</h2>
       <div class="cards" id="cardList"></div>
     </div>
 
@@ -293,7 +352,8 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
     <div class="room">
       <div class="paper blank" id="paper"></div>
       <div class="desk">
-        <div class="who">面接委員</div>
+        <div class="coach" id="coach" hidden></div>
+        <div class="who" id="who">面接委員</div>
         <div class="line" id="line"></div>
         <div class="status">
           <div class="state" id="state"><span class="dot"></span><span id="stateText">準備中</span></div>
@@ -316,6 +376,7 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
 
   <!-- RESULT -->
   <section id="result" class="wrap" hidden></section>
+  <section id="lesson" class="wrap" hidden></section>
 
   <footer>
     <p>問題はすべてこのアプリのオリジナルです（過去問ではありません）。判定は練習用の目安で、実際の採点とは異なります。音声認識は聞き取った単語を返すだけなので、発音の良し悪しは判定できません。</p>
@@ -704,6 +765,7 @@ function renderHome() {
   $("drillList").innerHTML = DRILLS.map((d, i) => `<button class="drill" data-i="${i}"><b>${esc(d.label)}</b><span>${esc(d.desc)}</span><small>${d.n * d.parts.length}問・カードはランダム</small></button>`).join("");
   $("drillList").querySelectorAll(".drill").forEach(b => b.onclick = () => startDrill(DRILLS[+b.dataset.i]));
   renderRecord();
+  renderLessonHome();
 }
 function initMode() {
   if (SR) {
@@ -877,7 +939,8 @@ async function runPart(run, card, part, exam) {
 }
 
 function beginSession(kind) {
-  S.kind = kind; S.items = []; S.pardons = 0; S.run++;
+  S.kind = kind; S.items = []; S.pardons = 0; S.run++; S.runNo = 0;
+  $("coach").hidden = true; $("who").textContent = "面接委員";
   S.mode = document.querySelector('input[name="mode"]:checked').value;
   $("home").hidden = true; $("result").hidden = true; $("exam").hidden = false; $("subWrap").hidden = false;
   $("fb").hidden = true; notice(""); window.scrollTo(0, 0);
@@ -889,6 +952,16 @@ async function startExam(card) {
   S.card = card;
   const run = beginSession("exam");
   try {
+    await runExam(run, card);
+    showResult();
+  } catch (e) {
+    if (!(e instanceof Stop)) { console.error(e); notice("エラーが起きました：" + e.message); }
+  }
+}
+/* the whole interview for one card, from entering to leaving */
+async function runExam(run, card) {
+  S.card = card; setPaper("blank");
+  {
     setStep("enter");
     await say(run, "Hello. Can I have your card, please?");
     await sleep(500); guard(run);
@@ -924,9 +997,6 @@ async function startExam(card) {
       return { grade: ok ? "good" : "fair", checks: [{ ok, msg: ok ? "あいさつして退室できた" : "Thank you. Goodbye. と言って退室する" }] };
     });
     await say(run, "Goodbye.");
-    showResult();
-  } catch (e) {
-    if (!(e instanceof Stop)) { console.error(e); notice("エラーが起きました：" + e.message); }
   }
 }
 
@@ -991,14 +1061,17 @@ function record(id, label, q, r, model, judge) {
   const text = r.text === "pardon" ? "" : r.text;
   const ev = judge(text);
   if (r.self && !words(text).length) ev.grade = "self";
-  S.items.push({ id, label, q, text, model, ev, latency: r.latency, secs: r.secs, self: r.self, card: S.card ? S.card.title : "" });
+  S.items.push({ id, label, q, text, model, ev, judge, latency: r.latency, secs: r.secs, self: r.self, card: S.card ? S.card.title : "", cardRef: S.card, runNo: S.runNo || 0, ctx: id === "q5b" && S.card ? S.card.q5.q : "" });
 }
 function quit() {
   S.run++; if (TTS) TTS.cancel();
   if (S.waiters) S.waiters();
   $("silentBox").hidden = true; $("ynBox").hidden = true; $("clockBox").hidden = true;
   $("exam").hidden = true; $("result").hidden = true; $("home").hidden = false; $("subWrap").hidden = true;
-  renderHome();
+  $("lesson").hidden = true; $("coach").hidden = true; $("fb").hidden = true;
+  if (LT) { clearInterval(LT); LT = null; }
+  S.lesson = null; $("ltimer").hidden = true;
+  renderHome(); window.scrollTo(0, 0);
 }
 
 /* ---------- result ---------- */
@@ -1018,7 +1091,17 @@ function showResult() {
       <div class="row"><button class="btn primary" id="again">${drill ? "別の問題でもう一度" : "同じカードでもう一度"}</button><button class="btn" id="back">ホームに戻る</button></div>
     </div>
     <div class="items">${S.items.map((it, i) => itemHTML(it, i)).join("")}</div>
-    ${drill ? "" : `<div class="panel">
+    ${drill ? "" : attitudeHTML()}`;
+  wireItems(sec, updateScore);
+  $("again").onclick = () => drill ? startDrill(S.drill) : startExam(S.card);
+  $("back").onclick = quit;
+  updateScore(); window.scrollTo(0, 0);
+}
+function attitudeHTML() {
+  const lat = S.items.filter(i => i.latency != null && i.id !== "read").map(i => i.latency);
+  const avgLat = lat.length ? lat.reduce((a, b) => a + b, 0) / lat.length : null;
+  const longSilence = lat.filter(x => x > 5).length;
+  return `<div class="panel">
       <h2>アティチュード（態度）</h2>
       <div class="chips">
         ${avgLat != null ? `<span class="chip ${avgLat <= 4 ? "ok" : "ng"}">答え始めまで 平均 ${avgLat.toFixed(1)} 秒</span>` : ""}
@@ -1032,18 +1115,18 @@ function showResult() {
         <label><input type="checkbox" id="at4"> わからないときも黙らず、Pardon? や知っている英語で答えた</label>
       </div>
       <p class="tip">聞き返しは使って大丈夫です。黙ってしまうより、“Pardon?” と言うほうがずっと良い印象になります。</p>
-    </div>`}`;
-  sec.querySelectorAll(".play").forEach(b => b.onclick = () => speak(S.items[+b.dataset.i].model, .9));
-  sec.querySelectorAll(".rate button").forEach(b => b.onclick = () => {
+    </div>`;
+}
+function wireItems(root, onChange) {
+  root.querySelectorAll(".item .play").forEach(b => b.onclick = () => speak(S.items[+b.dataset.i].model, .9));
+  root.querySelectorAll(".item .rate button").forEach(b => b.onclick = () => {
     const it = S.items[+b.dataset.i]; it.ev.selfGrade = b.dataset.g;
     b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
     const gEl = b.closest(".item").querySelector(".g"); gEl.className = "g " + b.dataset.g; gEl.textContent = MARK[b.dataset.g];
-    updateScore();
+    onChange();
   });
-  $("again").onclick = () => drill ? startDrill(S.drill) : startExam(S.card);
-  $("back").onclick = quit;
-  updateScore(); window.scrollTo(0, 0);
 }
+const fg = it => it.ev.selfGrade || it.ev.grade;
 function itemHTML(it, i) {
   const g = it.ev.selfGrade || it.ev.grade;
   const chips = (it.ev.checks || []).map(c => `<span class="chip ${c.ok ? "ok" : "ng"}">${esc(c.msg)}</span>`).join("");
@@ -1051,7 +1134,7 @@ function itemHTML(it, i) {
   const time = it.id === "read" && it.secs != null && !it.self ? `<span class="chip info">${it.secs.toFixed(0)} 秒</span>` : "";
   const rate = it.ev.grade === "self" ? `<div class="rate">自己採点：${["good", "fair", "poor"].map(x => `<button data-i="${i}" data-g="${x}" aria-pressed="${it.ev.selfGrade === x}">${MARK[x]}</button>`).join("")}</div>` : "";
   return `<article class="item"><div class="g ${g}">${MARK[g]}</div>
-    <div class="lab">${esc(it.label)}${S.kind === "drill" ? " · " + esc(it.card) : ""}</div>
+    <div class="lab">${esc(it.label)}${S.kind !== "exam" ? " · " + (it.runNo ? it.runNo + "回目 " : "") + esc(it.card) : ""}</div>
     <div class="q">${esc(it.q)}</div>
     <dl class="ans"><dt>あなた</dt><dd>${it.text ? esc(it.text) : `<span class="muted">${it.self ? "（入力なし）" : "（聞き取れませんでした）"}</span>`}</dd>
     <dt>模範解答</dt><dd>${esc(it.model)}<button class="play" data-i="${i}" aria-label="模範解答を聞く">▶ 聞く</button></dd></dl>
@@ -1099,10 +1182,233 @@ function renderRecord() {
       </div>
       <div class="rec-col">
         <h3>最近の練習</h3>
-        <ul class="hist">${h.slice(-6).reverse().map(e => `<li><span class="muted">${esc(e.date)}</span><span>${e.kind === "drill" ? "ドリル" : "本番"}：${esc(e.title)}</span><b>${e.good}/${e.total}</b></li>`).join("")}</ul>
+        <ul class="hist">${h.slice(-6).reverse().map(e => `<li><span class="muted">${esc(e.date)}</span><span>${e.kind === "drill" ? "ドリル" : e.kind === "lesson" ? "授業" : "本番"}：${esc(e.title)}</span><b>${e.good}/${e.total}</b></li>`).join("")}</ul>
       </div>
     </div>`;
   if (weak && $("weakGo")) $("weakGo").onclick = () => startDrill(DRILLS.find(d => d.id === weak.a[2]));
+}
+
+/* ---------- lesson: 12 min interview flow + 8 min feedback / fixes / homework ---------- */
+const PHASES = [["exam", "本番形式", 12], ["fb", "フィードバック", 3], ["fix", "改善箇所の確認", 3], ["hw", "宿題", 2]];
+const LKEY = "eiken3-lessons", HWKEY = "eiken3-homework";
+function loadJSON(k, d) { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch (e) { return d; } }
+function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+let LT = null;
+const fmt = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+const SECTION_ROWS = [["name", "入室"], ["read", "音読"], ["q1", "No.1"], ["q2", "No.2"], ["q3", "No.3"], ["q4", "No.4"], ["q5a", "No.5 Yes/No"], ["q5b", "No.5 2つ目"], ["bye", "退室"]];
+function lessonCards(no) { const a = ((no - 1) * 2) % CARDS.length; return [CARDS[a], CARDS[(a + 1) % CARDS.length]]; }
+function nextLessonNo() { return (loadJSON(LKEY, { count: 0 }).count || 0) + 1; }
+function planHTML(active) {
+  let acc = 0;
+  return `<ol class="plan">${PHASES.map(([id, lab, min]) => { const st = acc; acc += min; return `<li class="${active === id ? "now" : ""}" style="flex:${min}"><b>${lab}</b><span>${st}–${acc}分</span></li>`; }).join("")}</ol>`;
+}
+function renderLessonHome() {
+  const no = nextLessonNo(), cards = lessonCards(no), hw = loadJSON(HWKEY, null);
+  const box = $("lessonHome");
+  box.innerHTML = `
+    <div class="lh">
+      <div class="lh-main">
+        <div class="lh-no">第${no}回</div>
+        <p>前半12分は本番と同じ流れで2枚のカードを通して練習し、後半8分でふり返り・言い直し・宿題の確認をします。</p>
+        ${planHTML()}
+        <div class="lh-cards">${cards.map((c, i) => `<div class="lh-card">${svg(c.scene, c.alt)}<span>${i + 1}回目：<b>${esc(c.title)}</b></span></div>`).join("")}</div>
+        <div class="row"><button class="btn primary" id="lessonGo">第${no}回の授業を始める（20分）</button><span class="small muted">押すと授業タイマーが始まります</span></div>
+      </div>
+      <div class="lh-side">
+        <h3>今日のめあて</h3>
+        <p class="goal">${esc(hw && hw.goal ? hw.goal : "本番の流れを覚えて、黙らずに文で答える")}</p>
+        <h3>前回の宿題</h3>
+        ${hw ? `<ul class="hw">${hw.items.map((t, i) => `<li><label><input type="checkbox" data-hw="${i}" ${t.done ? "checked" : ""}> <span>${esc(t.text)}</span></label></li>`).join("")}</ul><p class="small muted">第${hw.no}回（${esc(hw.date)}）に出た宿題です。終わったらチェックしてください。</p>` : `<p class="muted small">まだ宿題はありません。授業の最後に、苦手に合わせた宿題が出ます。</p>`}
+      </div>
+    </div>`;
+  $("lessonGo").onclick = startLesson;
+  box.querySelectorAll("input[data-hw]").forEach(cb => cb.onchange = () => {
+    const h = loadJSON(HWKEY, null); if (!h) return; h.items[+cb.dataset.hw].done = cb.checked; saveJSON(HWKEY, h);
+  });
+}
+function renderTimer() {
+  const L = S.lesson; if (!L) return;
+  const sec = Math.floor((Date.now() - L.t0) / 1000), cur = PHASES.findIndex(p => p[0] === L.phase);
+  let acc = 0;
+  const phases = PHASES.map(([id, lab, min], i) => {
+    const st = acc; acc += min;
+    const over = i === cur && sec > acc * 60;
+    return `<li class="${i < cur ? "done" : i === cur ? "now" : ""}${over ? " over" : ""}" style="flex:${min}"><b>${lab}</b><span>${st}–${acc}分</span></li>`;
+  }).join("");
+  const left = 1200 - sec;
+  $("ltimer").innerHTML = `<div class="lt-head"><b>第${L.no}回の授業</b><span class="lt-clock ${left < 0 ? "over" : ""}">${fmt(Math.max(0, sec))}<small> / 20:00</small></span></div><ol class="plan">${phases}</ol>`;
+  $("ltimer").hidden = false;
+}
+function setPhase(id) { S.lesson.phase = id; renderTimer(); }
+function waitButton(run, label, stateText) {
+  return new Promise((resolve, reject) => {
+    setState("wait", stateText);
+    $("doneBtn").disabled = false; $("doneBtn").textContent = label;
+    $("doneBtn").onclick = () => { $("doneBtn").disabled = true; S.waiters = null; resolve(); };
+    S.waiters = () => reject(new Stop());
+  });
+}
+async function startLesson() {
+  const no = nextLessonNo();
+  const run = beginSession("lesson");
+  S.lesson = { no, cards: lessonCards(no), t0: Date.now(), phase: "exam", skipped: false };
+  if (LT) clearInterval(LT);
+  LT = setInterval(renderTimer, 1000); renderTimer();
+  try {
+    S.runNo = 1; $("who").textContent = "面接委員（1回目）";
+    await runExam(run, S.lesson.cards[0]);
+    const usedMin = (Date.now() - S.lesson.t0) / 60000;
+    if (usedMin <= 7.5) {
+      setPaper("blank"); $("line").textContent = "";
+      notice(`1回目が終わりました（${fmt(Math.round(usedMin * 60))}）。2回目は別のカード「${S.lesson.cards[1].title}」で、もう一度最初から通します。`);
+      await waitButton(run, "2回目を始める", "1回目が終わりました");
+      notice("");
+      S.runNo = 2; $("who").textContent = "面接委員（2回目）";
+      await runExam(run, S.lesson.cards[1]);
+    } else {
+      S.lesson.skipped = true;
+    }
+    setPhase("fb");
+    showLessonFeedback();
+  } catch (e) {
+    if (!(e instanceof Stop)) { console.error(e); notice("エラーが起きました：" + e.message); }
+  }
+}
+function fbTableHTML() {
+  const runs = S.lesson.skipped ? [1] : [1, 2];
+  const cell = (id, r) => { const it = S.items.find(x => x.id === id && x.runNo === r); if (!it) return `<td>–</td>`; const g = fg(it); return `<td><span class="mk ${g}">${MARK[g]}</span></td>`; };
+  return `<div class="tablewrap"><table class="fbt"><thead><tr><th></th>${runs.map(r => `<th>${r}回目<br><span>${esc(S.lesson.cards[r - 1].title)}</span></th>`).join("")}</tr></thead>
+    <tbody>${SECTION_ROWS.map(([id, lab]) => `<tr><th>${lab}</th>${runs.map(r => cell(id, r)).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+function lessonScore() {
+  const gs = S.items.map(fg);
+  return { good: gs.filter(g => g === "good").length, total: gs.length, pending: gs.filter(g => g === "self").length };
+}
+function showLessonFeedback() {
+  $("exam").hidden = true; $("subWrap").hidden = true;
+  const v = $("lesson"); v.hidden = false;
+  const sc = lessonScore();
+  v.innerHTML = `
+    <div class="panel">
+      <span class="eyebrow">後半 1 ／ フィードバック（目安3分）</span>
+      <h2>今日の本番形式のふり返り</h2>
+      ${S.lesson.skipped ? `<p class="notice">1回目で時間を使ったため、2回目は次回にまわしました。</p>` : ""}
+      <div class="fbgrid">
+        <div>${fbTableHTML()}</div>
+        <div class="fbside">
+          <div class="score"><span class="n" id="lscore">${sc.good} / ${sc.total}</span><span>項目が◎</span></div>
+          <p class="small muted" id="lpending">${sc.pending ? `「？」の項目が ${sc.pending} 個あります。下の詳細で模範解答と比べて、◎△× を付けてください。` : "◎以外の項目を、次の「改善箇所の確認」で言い直します。"}</p>
+          <button class="btn primary" id="toFix">改善箇所の確認へ</button>
+        </div>
+      </div>
+    </div>
+    ${attitudeHTML()}
+    <details class="panel" ${sc.pending ? "open" : ""}><summary><b>答えの詳細と自己採点</b></summary><div class="items">${S.items.map((it, i) => itemHTML(it, i)).join("")}</div></details>`;
+  wireItems(v, () => {
+    const t = v.querySelector(".fbt").closest(".tablewrap"); t.outerHTML = fbTableHTML();
+    const s2 = lessonScore(); $("lscore").textContent = `${s2.good} / ${s2.total}`;
+    $("lpending").textContent = s2.pending ? `「？」の項目があと ${s2.pending} 個あります。` : "◎以外の項目を、次の「改善箇所の確認」で言い直します。";
+  });
+  $("toFix").onclick = runImprove;
+  window.scrollTo(0, 0);
+}
+function pickTargets() {
+  const order = ["q3", "q2", "q1", "q4", "q5b", "q5a", "read", "name", "bye"];
+  const bad = S.items.filter(it => ["fair", "poor", "none"].includes(fg(it)));
+  const out = [];
+  for (const id of order) { const c = bad.filter(it => it.id === id); if (c.length) out.push(c[c.length - 1]); if (out.length === 3) break; }
+  if (!out.length) { const ch = S.items.filter(it => it.id === "q5b").pop(); if (ch) out.push(Object.assign({}, ch, { challenge: true })); }
+  return out;
+}
+async function runImprove() {
+  setPhase("fix");
+  const run = S.run, targets = pickTargets();
+  S.fixes = [];
+  $("lesson").hidden = true; $("exam").hidden = false; $("subWrap").hidden = false; notice("");
+  $("who").textContent = "面接委員（言い直し）";
+  window.scrollTo(0, 0);
+  try {
+    for (let i = 0; i < targets.length; i++) {
+      const t = targets[i];
+      setTrack(targets.map((x, k) => `改善 ${k + 1}`), i);
+      S.card = t.cardRef; $("line").textContent = "";
+      setPaper(["q4", "q5a", "q5b"].includes(t.id) ? "back" : ["name", "bye"].includes(t.id) ? "blank" : "card");
+      const ng = (t.ev.checks || []).filter(c => !c.ok).map(c => c.msg);
+      $("coach").innerHTML = `<span class="eyebrow">改善 ${i + 1} / ${targets.length}：${esc(t.label)}（${t.runNo}回目）</span>
+        ${t.challenge ? `<p>全部◎でした。チャレンジとして、もっとくわしく2文で答えてみましょう。</p>` : ""}
+        ${t.ctx ? `<p class="small muted">前の質問：${esc(t.ctx)}</p>` : ""}
+        <dl class="ans"><dt>前の答え</dt><dd>${t.text ? esc(t.text) : `<span class="muted">（答えなし）</span>`}</dd>
+        <dt>模範解答</dt><dd>${esc(t.model)}<button class="play" id="coachPlay">▶ 聞く</button></dd></dl>
+        ${ng.length ? `<div class="chips">${ng.map(m => `<span class="chip ng">${esc(m)}</span>`).join("")}</div>` : ""}
+        <p class="small">模範解答を聞いてポイントを確認したら、もう一度答えます。</p>`;
+      $("coach").hidden = false;
+      $("coachPlay").onclick = () => speak(t.model, .9);
+      await waitButton(run, "言い直す", "ポイントを確認してください");
+      await say(run, "Let's try again.");
+      const r = t.id === "read"
+        ? await listen(run, { wait: 10000, silence: 3200, max: 50000, target: 4, noPardon: true, noType: true })
+        : await ask(run, "", t.q);
+      guard(run);
+      const text = r.text === "pardon" ? "" : r.text;
+      const ev = t.judge(text);
+      if (r.self && !words(text).length) ev.grade = "self";
+      const fix = { id: t.id, label: t.label + "（言い直し）", q: t.q, text, model: t.model, ev, self: r.self, before: fg(t) };
+      S.fixes.push(fix);
+      $("coach").hidden = true;
+      await feedback(run, fix, i === targets.length - 1);
+    }
+    showHomework();
+  } catch (e) {
+    if (!(e instanceof Stop)) { console.error(e); notice("エラーが起きました：" + e.message); }
+  }
+}
+const AREA_OF = id => id === "read" ? "read" : id === "q1" ? "q1" : (id === "q2" || id === "q3") ? "q23" : (id === "q4" || id.startsWith("q5")) ? "q45" : null;
+const AREA_TIP = { read: "タイトルから、意味の切れ目で区切って読む", q1: "Because ＋ 代名詞で始め、so の前の部分を答える", q23: "He / She is ～ing. ／ There are ～. の形で答える", q45: "I で始まる文で答え、Yes / No のあとにもう1文足す" };
+function buildHomework() {
+  const L = S.lesson, cnt = {};
+  S.items.forEach(it => { const a = AREA_OF(it.id), g = fg(it); if (!a || g === "good" || g === "self") return; cnt[a] = (cnt[a] || 0) + 1; });
+  const weak = Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(e => DRILLS.find(d => d.id === e[0]));
+  const items = [];
+  weak.slice(0, 2).forEach(d => items.push(`アプリの「問題別ドリル：${d.label}」を1回やる（コツ：${AREA_TIP[d.id]}）`));
+  const used = S.lesson.skipped ? [L.cards[0]] : L.cards;
+  items.push(`今日のカード「${used.map(c => c.title).join("」「")}」の英文を、タイトルから3回ずつ音読する`);
+  (S.fixes || []).filter(f => fg(f) !== "good").forEach(f => items.push(`次の模範解答を3回声に出して覚える：${f.model}`));
+  if (!weak.length) items.push("ホームの「問題カードを選ぶ」から、まだ練習していないカードを1枚、本番練習で通す");
+  const d = new Date();
+  return { no: L.no, date: `${d.getMonth() + 1}/${d.getDate()}`, goal: weak[0] ? `${weak[0].label}：${AREA_TIP[weak[0].id]}` : "答え始めを3秒以内にして、No.5 は2文で答える", items: items.map(text => ({ text, done: false })) };
+}
+function showHomework() {
+  setPhase("hw");
+  const L = S.lesson, hw = buildHomework();
+  saveJSON(HWKEY, hw);
+  saveJSON(LKEY, { count: L.no });
+  const sc = lessonScore(), h = loadHist();
+  h.push({ key: Date.now(), date: hw.date, kind: "lesson", title: `第${L.no}回の授業`, good: sc.good, total: sc.total, grades: S.items.map(it => [it.id, fg(it)]) });
+  saveHist(h);
+  const text = `【英検3級 面接 第${L.no}回の宿題】\nめあて：${hw.goal}\n` + hw.items.map(t => `□ ${t.text}`).join("\n");
+  $("exam").hidden = true; $("subWrap").hidden = true;
+  const v = $("lesson"); v.hidden = false;
+  v.innerHTML = `
+    <div class="panel">
+      <span class="eyebrow">後半 2 ／ 改善箇所の確認の結果</span>
+      <div class="fixes">${(S.fixes || []).map(f => `<div class="fixrow"><span>${esc(f.label.replace("（言い直し）", ""))}</span><span class="mk ${f.before}">${MARK[f.before]}</span><span class="arrow">→</span><span class="mk ${fg(f)}">${MARK[fg(f)]}</span><span class="small muted">${esc(f.model)}</span></div>`).join("") || `<p class="muted">言い直しはありませんでした。</p>`}</div>
+    </div>
+    <div class="panel">
+      <span class="eyebrow">後半 3 ／ 宿題（目安2分）</span>
+      <h2>次回までの宿題</h2>
+      <p class="goal">次回のめあて：${esc(hw.goal)}</p>
+      <ul class="hw">${hw.items.map(t => `<li><span class="box"></span><span>${esc(t.text)}</span></li>`).join("")}</ul>
+      <p class="small muted">宿題はホームの「授業」欄にも表示され、終わったらチェックできます。</p>
+      <textarea id="hwText" rows="5" readonly>${esc(text)}</textarea>
+      <div class="row"><button class="btn" id="hwCopy">宿題の文をコピー</button><span class="small muted" id="hwCopied"></span><button class="btn primary" id="lessonEnd">授業を終わる</button></div>
+    </div>`;
+  $("hwCopy").onclick = () => {
+    const ta = $("hwText");
+    const fallback = () => { ta.focus(); ta.select(); $("hwCopied").textContent = "選択しました。コピーしてください。"; };
+    try { navigator.clipboard.writeText(text).then(() => { $("hwCopied").textContent = "コピーしました"; }, fallback); } catch (e) { fallback(); }
+  };
+  $("lessonEnd").onclick = quit;
+  window.scrollTo(0, 0);
 }
 
 /* ---------- wiring ---------- */
