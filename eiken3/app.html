@@ -162,6 +162,29 @@ textarea { width: 100%; font: inherit; font-family: var(--font-card); font-size:
 .checks { display: grid; gap: 6px; }
 .checks label { display: flex; gap: 8px; align-items: start; cursor: pointer; }
 .checks input { margin-top: 6px; accent-color: var(--accent); }
+.drills { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.drill { text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 12px 14px; display: grid; gap: 2px; }
+.drill:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.drill b { font-weight: 700; }
+.drill span { font-size: .85rem; font-family: var(--font-card); }
+.drill small { font-size: .78rem; color: var(--muted); }
+.rec { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.rec-col { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.bars { display: grid; gap: 8px; }
+.brow { display: grid; grid-template-columns: 8.5em minmax(0, 1fr) 3em; gap: 10px; align-items: center; font-size: .88rem; }
+.brow .pct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .88rem; }
+.hist li { display: grid; grid-template-columns: 3.5em minmax(0, 1fr) auto; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.hist b { font-variant-numeric: tabular-nums; }
+.small-btn { padding: 3px 10px; font-size: .82rem; margin-left: 6px; }
+.guide details { border-top: 1px solid var(--line); padding-top: 10px; }
+.guide summary { cursor: pointer; font-weight: 700; }
+.guide ul { margin: 8px 0 4px; padding-left: 1.3em; display: grid; gap: 4px; }
+.guide .ex { font-family: var(--font-card); background: var(--bg); border-radius: 6px; padding: 8px 12px; margin-top: 6px; }
+.fb { display: grid; gap: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.status:has(#fb:not([hidden])) #live, .status:has(#fb:not([hidden])) .row:has(#doneBtn) { display: none; }
+.fbhead { display: flex; align-items: center; gap: 10px; }
+.fbhead .g { width: 2em; height: 2em; border-radius: 50%; display: grid; place-items: center; font-weight: 700; }
 footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
 </style>
 
@@ -188,6 +211,65 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
     <div class="panel">
       <h2>問題カードを選ぶ</h2>
       <div class="cards" id="cardList"></div>
+    </div>
+
+    <div class="panel">
+      <h2>問題別ドリル</h2>
+      <p class="small muted">苦手な問題だけを続けて練習します。1問ごとにすぐチェック結果が出ます。</p>
+      <div class="drills" id="drillList"></div>
+    </div>
+
+    <div class="panel">
+      <h2>学習記録</h2>
+      <div id="record"></div>
+    </div>
+
+    <div class="panel guide">
+      <h2>答え方のコツ</h2>
+      <details open>
+        <summary>No.1 英文についての質問</summary>
+        <ul>
+          <li>理由を聞く Why ～? には <b>Because ～.</b> で答えます。</li>
+          <li>答えは英文の <b>so の前</b> にあることが多いです。so 以下は言いません。</li>
+          <li>名詞は代名詞に言いかえます（many young people → <b>they</b>、riding a bike → <b>it</b>）。</li>
+        </ul>
+        <p class="ex">Q. Why do many young people go to festivals with their friends?<br>A. Because <b>they</b> like wearing yukata.</p>
+      </details>
+      <details>
+        <summary>No.2 イラスト（数・場所）</summary>
+        <ul>
+          <li>How many ～? → <b>There are four.</b> ／ <b>Two birds are.</b></li>
+          <li>Where is ～? → <b>It's on the wall.</b>（on 上・under 下・next to 隣・in 中）</li>
+        </ul>
+      </details>
+      <details>
+        <summary>No.3 イラスト（動作・これからすること）</summary>
+        <ul>
+          <li>What is he doing? → <b>He is ～ing.</b>（is を忘れない）</li>
+          <li>What is she going to do? → <b>She is going to ～.</b> 吹き出しの中を見て答えます。</li>
+        </ul>
+      </details>
+      <details>
+        <summary>No.4 あなた自身について</summary>
+        <ul>
+          <li>質問と同じ動詞・同じ時制で答えます。What did you do ～? → <b>I went</b> ～. ／ Where do you want to go? → <b>I want to go to</b> ～.</li>
+          <li>単語だけでなく、<b>I</b> で始まる文で答えます。</li>
+        </ul>
+      </details>
+      <details>
+        <summary>No.5 Yes / No のあとの質問</summary>
+        <ul>
+          <li>まず <b>Yes, I do.</b> ／ <b>No, I don't.</b> と答えます（Have you ～? なら Yes, I have.）。</li>
+          <li>Yes なら “Please tell me more.”、No なら別の質問が来ます。どちらも1文以上で答えます。</li>
+        </ul>
+      </details>
+      <details>
+        <summary>困ったとき</summary>
+        <ul>
+          <li>聞き取れない → <b>Pardon?</b>（くり返してもらえます）</li>
+          <li>答えが思いつかない → 黙らずに、知っている英語で短く答えます。完璧でなくても文にすることが大切です。</li>
+        </ul>
+      </details>
     </div>
 
     <div class="panel">
@@ -225,6 +307,7 @@ footer { font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
             <button class="btn" id="pardonBtn" disabled>Pardon?</button>
             <button class="btn ghost" id="quitBtn">中止する</button>
           </div>
+          <div class="fb" id="fb" hidden></div>
           <div class="notice" id="notice" hidden></div>
         </div>
       </div>
@@ -298,6 +381,14 @@ function bench(x, y, w, s) {
     `<rect x="${x}" y="${y - 12 * s}" width="${w}" height="${6 * s}" rx="2" fill="#b07a46"/>` +
     `<rect x="${x + 6 * s}" y="${y - 8 * s}" width="${4 * s}" height="${8 * s}" fill="#6e4a2a"/>` +
     `<rect x="${x + w - 10 * s}" y="${y - 8 * s}" width="${4 * s}" height="${8 * s}" fill="#6e4a2a"/>`;
+}
+function cat(x, y, s, c) {
+  return `<path d="M${x - 12 * s} ${y - 6 * s} Q${x - 26 * s} ${y - 10 * s} ${x - 22 * s} ${y - 26 * s}" fill="none" stroke="${c}" stroke-width="${4 * s}" stroke-linecap="round"/>` +
+    `<ellipse cx="${x}" cy="${y - 9 * s}" rx="${14 * s}" ry="${9 * s}" fill="${c}"/>` +
+    `<circle cx="${x + 12 * s}" cy="${y - 20 * s}" r="${7.5 * s}" fill="${c}"/>` +
+    `<path d="M${x + 6 * s} ${y - 25 * s} L${x + 7 * s} ${y - 33 * s} L${x + 12 * s} ${y - 27 * s} Z M${x + 13 * s} ${y - 27 * s} L${x + 18 * s} ${y - 33 * s} L${x + 19 * s} ${y - 24 * s} Z" fill="${c}"/>` +
+    `<circle cx="${x + 15 * s}" cy="${y - 21 * s}" r="${1.2 * s}" fill="${INK}"/>` +
+    `<ellipse cx="${x}" cy="${y - 9 * s}" rx="${14 * s}" ry="${9 * s}" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="1"/>`;
 }
 const SCENES = {
   festival() {
@@ -387,6 +478,65 @@ const SCENES = {
     g += `<ellipse cx="296" cy="112" rx="15" ry="5" fill="#ffffff" stroke="${INK}" stroke-width="1.3"/>`;
     g += `<circle cx="314" cy="106" r="3.5" fill="#ffffff" stroke="#8fb9d9"/><circle cx="321" cy="100" r="2.5" fill="#ffffff" stroke="#8fb9d9"/>`;
     return g;
+  },
+  station() {
+    let g = `<rect width="360" height="220" fill="#e7ebef"/><rect y="168" width="360" height="52" fill="#b9b3a7"/><rect y="166" width="360" height="5" fill="#f2c94c"/>`;
+    // sign
+    g += `<line x1="96" y1="0" x2="96" y2="20" stroke="#7d8790" stroke-width="2"/><line x1="160" y1="0" x2="160" y2="20" stroke="#7d8790" stroke-width="2"/><rect x="80" y="18" width="96" height="26" rx="3" fill="#ffffff" stroke="#2f6b4f" stroke-width="2.5"/><text x="128" y="37" text-anchor="middle" font-size="14" font-family="sans-serif" fill="#2f6b4f">みどり駅</text>`;
+    // train
+    g += `<rect x="214" y="58" width="150" height="104" rx="10" fill="#dfe6ec" stroke="#9aa6b0" stroke-width="2"/><rect x="214" y="128" width="150" height="10" fill="#2f9a62"/>`;
+    [232, 274, 316].forEach(x => { g += `<rect x="${x}" y="74" width="30" height="34" rx="3" fill="#a9cbe3" stroke="#7d8b96" stroke-width="1.5"/>`; });
+    g += `<circle cx="244" cy="166" r="7" fill="#444"/><circle cx="336" cy="166" r="7" fill="#444"/>`;
+    // bench with a bag on it, man reading a newspaper
+    g += bench(28, 196, 120);
+    g += person({ x: 58, y: 196, sit: true, seat: 172, shirt: "#6b5fb0", pants: "#2c2f3a", hair: "#3b3b3b", dir: 1, armFront: [16, -8], armBack: [18, -4] });
+    g += `<rect x="76" y="112" width="30" height="36" fill="#f4f3ee" stroke="${INK}" stroke-width="1.3"/><line x1="80" y1="120" x2="102" y2="120" stroke="#9aa0a8" stroke-width="2"/><line x1="80" y1="127" x2="102" y2="127" stroke="#9aa0a8" stroke-width="1.5"/><line x1="80" y1="133" x2="98" y2="133" stroke="#9aa0a8" stroke-width="1.5"/><line x1="80" y1="139" x2="102" y2="139" stroke="#9aa0a8" stroke-width="1.5"/>`;
+    g += `<path d="M118 160 Q126 148 134 160" fill="none" stroke="#5a3a20" stroke-width="2.5"/><rect x="112" y="158" width="28" height="20" rx="3" fill="#8a5a32"/>`;
+    return g;
+  },
+  music() {
+    let g = `<rect width="360" height="220" fill="#f1ebe1"/><rect y="176" width="360" height="44" fill="#b98f62"/>`;
+    // poster with a note
+    g += `<rect x="40" y="26" width="64" height="76" fill="#ffffff" stroke="#c8b9a2" stroke-width="2"/><path d="M80 44 L80 76 M80 44 L92 48" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="74" cy="78" rx="7" ry="5" fill="${INK}"/>`;
+    // two cats
+    g += cat(56, 196, 1, "#e0a15c") + cat(116, 196, .9, "#6d6d6d");
+    // piano
+    g += `<rect x="214" y="70" width="124" height="106" rx="4" fill="#2b2b30"/><rect x="208" y="122" width="136" height="12" fill="#f7f7f2" stroke="#2b2b30" stroke-width="1"/>`;
+    for (let i = 0; i < 8; i++) g += `<rect x="${216 + i * 16}" y="122" width="7" height="7" fill="#2b2b30"/>`;
+    g += `<rect x="222" y="134" width="6" height="42" fill="#1c1c20"/><rect x="326" y="134" width="6" height="42" fill="#1c1c20"/>`;
+    // stool and girl playing
+    g += `<rect x="172" y="152" width="34" height="7" rx="2" fill="#7a5233"/><rect x="186" y="159" width="6" height="18" fill="#7a5233"/>`;
+    g += person({ x: 186, y: 194, sit: true, seat: 152, shirt: "#d4566b", pants: "#2c3550", hair: "#2a1d14", longHair: true, dress: true, dir: 1, armFront: [24, 2], armBack: [26, -2] });
+    return g;
+  },
+  camping() {
+    let g = `<rect width="360" height="220" fill="#d6ecf3"/><path d="M0 120 L70 50 L140 120 Z" fill="#a9bfb0"/><path d="M90 120 L180 36 L270 120 Z" fill="#94ae9e"/><rect y="118" width="360" height="102" fill="#9ccc84"/>`;
+    g += `<path d="M262 220 Q280 170 360 150 L360 220 Z" fill="#7cb9e0"/>`;
+    // two tents
+    g += `<path d="M24 176 L66 112 L108 176 Z" fill="#e58b3a"/><path d="M60 176 L66 140 L72 176 Z" fill="#8a4a1a"/>`;
+    g += `<path d="M118 172 L152 122 L186 172 Z" fill="#4f9a6a"/><path d="M147 172 L152 146 L157 172 Z" fill="#2a5a3a"/>`;
+    // boy with a fishing rod walking to the river
+    g += person({ x: 222, y: 200, walk: true, shirt: "#3d6fb6", pants: "#5a4a3a", hair: "#1d1d1d", dir: 1, armFront: [12, 10], armBack: [-8, 22] });
+    g += `<line x1="243" y1="160" x2="282" y2="104" stroke="#6e4a2a" stroke-width="2.5" stroke-linecap="round"/><path d="M282 104 Q290 120 288 140" fill="none" stroke="#777" stroke-width="1"/>`;
+    // thought bubble: he catches a fish
+    const fish = `<ellipse cx="300" cy="62" rx="20" ry="10" fill="#f08a4b"/><path d="M318 62 L332 52 L332 72 Z" fill="#f08a4b"/><circle cx="288" cy="60" r="2" fill="${INK}"/>` +
+      `<path d="M262 84 Q300 96 338 84" fill="none" stroke="#7cb9e0" stroke-width="3"/>`;
+    g += bubble(300, 66, 46, 32, 236, 120, fish);
+    return g;
+  },
+  rain() {
+    let g = `<rect width="360" height="220" fill="#c7ccd4"/><rect x="0" y="40" width="70" height="140" fill="#aab1bb"/><rect x="82" y="70" width="60" height="110" fill="#b6bcc5"/><rect y="178" width="360" height="42" fill="#8a8f98"/>`;
+    for (let i = 0; i < 40; i++) { const x = (i * 53) % 370, y = (i * 37) % 170; g += `<line x1="${x}" y1="${y}" x2="${x - 5}" y2="${y + 12}" stroke="#6f86a8" stroke-width="1.5" stroke-linecap="round"/>`; }
+    // car with a cat under it
+    g += `<path d="M228 160 L236 132 Q240 122 252 122 L306 122 Q318 122 324 132 L340 146 L346 160 Q346 168 338 168 L234 168 Q226 168 228 160 Z" fill="#d1453a"/><rect x="246" y="128" width="30" height="16" rx="2" fill="#bcd6e6"/><rect x="282" y="128" width="30" height="16" rx="2" fill="#bcd6e6"/>`;
+    g += `<circle cx="252" cy="170" r="11" fill="#2b2b2b"/><circle cx="322" cy="170" r="11" fill="#2b2b2b"/>`;
+    g += cat(287, 196, .75, "#f0f0ea");
+    // boy running
+    g += person({ x: 60, y: 202, walk: true, shirt: "#e9a23b", pants: "#2c3550", hair: "#1d1d1d", dir: 1, armFront: [14, 8], armBack: [-14, 12] });
+    // woman with an umbrella
+    g += person({ x: 160, y: 202, shirt: "#5b8fd6", pants: "#3a3f5a", hair: "#4a2c18", longHair: true, dress: true, dir: -1, armFront: [-2, -6], armBack: [4, 24] });
+    g += `<line x1="167" y1="124" x2="167" y2="74" stroke="#444" stroke-width="2"/><path d="M131 80 Q167 40 203 80 Z" fill="#3d6fb6"/>`;
+    return g;
   }
 };
 const svg = (name, label) => `<svg viewBox="0 0 360 220" role="img" aria-label="${label}" xmlns="http://www.w3.org/2000/svg">${SCENES[name]()}</svg>`;
@@ -429,6 +579,42 @@ const CARDS = [
     q3: { lead: "Please look at the girl.", q: "What is she doing?", model: "She is washing the dishes.", subj: ["she"], keys: [{ re: "is", label: "is（be動詞）" }, { re: "washing", label: "washing" }, { re: "dish|dishes|plates?", label: "the dishes" }] },
     q4: { q: "What did you do last Sunday?", model: "I went to the park with my friends.", subj: ["i"], min: 4, keys: [{ re: "went|played|watched|saw|ate|had|made|did|bought|read|studied|visited|stayed|cooked|cleaned|practiced|took|got|met|[a-z]+ed", label: "過去形" }] },
     q5: { q: "Do you like cooking?", yes: { q: "Please tell me more.", model: "I often make curry for my family." }, no: { q: "What do you like to eat?", model: "I like sushi very much." } }
+  },
+  {
+    id: "trains", title: "Trains", scene: "station", alt: "駅のホーム。ベンチで新聞を読む男性、ベンチの上のかばん、電車",
+    text: "Trains are popular in Japan. They are fast and clean. Many people in big cities do not have cars, so they use trains every day.",
+    q1: { q: "Why do many people in big cities use trains every day?", model: "Because they do not have cars.", because: true, subj: ["they"], keys: [{ re: "not|no", label: "not" }, { re: "cars?", label: "cars" }], noSo: true },
+    q2: { lead: "Please look at the picture.", q: "Where is the bag?", model: "It's on the bench.", subj: ["it", "the", "on"], keys: [{ re: "on the bench", label: "on the bench" }] },
+    q3: { lead: "Please look at the man.", q: "What is he doing?", model: "He is reading a newspaper.", subj: ["he"], keys: [{ re: "is", label: "is（be動詞）" }, { re: "reading", label: "reading" }, { re: "newspapers?|news paper|paper", label: "a newspaper" }] },
+    q4: { q: "How do you usually go to school?", model: "I usually go to school by bike.", subj: ["i"], min: 4, keys: [{ re: "by|walk|on foot", label: "by ～ / walk" }] },
+    q5: { q: "Have you ever been to Tokyo?", y: "Yes, I have.", n: "No, I haven't.", yes: { q: "Please tell me more.", model: "I went there with my family last year." }, no: { q: "Where do you want to go in Japan?", model: "I want to go to Hokkaido." } }
+  },
+  {
+    id: "music", title: "Music Lessons", scene: "music", alt: "部屋。ピアノをひく女の子、床にねこが2匹",
+    text: "Many children take music lessons. Some children learn to play the piano, and others learn to sing. Playing music is exciting, so many children practice every day.",
+    q1: { q: "Why do many children practice every day?", model: "Because playing music is exciting.", because: true, subj: ["playing", "it"], keys: [{ re: "exciting|fun", label: "exciting" }], noSo: true },
+    q2: { lead: "Please look at the picture.", q: "How many cats are there?", model: "There are two.", subj: ["there", "two"], keys: [{ re: NUM.two, label: "two" }] },
+    q3: { lead: "Please look at the girl.", q: "What is she doing?", model: "She is playing the piano.", subj: ["she"], keys: [{ re: "is", label: "is（be動詞）" }, { re: "playing", label: "playing" }, { re: "piano", label: "the piano" }] },
+    q4: { q: "What kind of music do you like?", model: "I like J-pop very much.", subj: ["i"], min: 3, keys: [{ re: "like|love", label: "like" }] },
+    q5: { q: "Do you play any musical instruments?", yes: { q: "Please tell me more.", model: "I play the guitar with my brother." }, no: { q: "What do you like to do after school?", model: "I like to play basketball with my friends." } }
+  },
+  {
+    id: "camping", title: "Camping", scene: "camping", alt: "キャンプ場。テントが2つ、つりざおを持って川へ向かう男の子、魚をつる様子の吹き出し",
+    text: "Camping is fun for families. People can cook outside and sleep in tents. Camping is a good way to enjoy nature, so many families go camping in summer.",
+    q1: { q: "Why do many families go camping in summer?", model: "Because camping is a good way to enjoy nature.", because: true, subj: ["camping", "it"], keys: [{ re: "good way|enjoy", label: "a good way to enjoy" }, { re: "nature", label: "nature" }], noSo: true },
+    q2: { lead: "Please look at the picture.", q: "How many tents are there?", model: "There are two.", subj: ["there", "two"], keys: [{ re: NUM.two, label: "two" }] },
+    q3: { lead: "Please look at the boy.", q: "What is he going to do?", model: "He is going to fish in the river.", subj: ["he"], keys: [{ re: "going to|gonna", label: "going to" }, { re: "fish|fishing|catch", label: "fish" }] },
+    q4: { q: "What are you going to do this weekend?", model: "I'm going to visit my grandmother.", subj: ["i"], min: 4, keys: [{ re: "going to|gonna|will|want to", label: "going to" }] },
+    q5: { q: "Do you like summer?", yes: { q: "Please tell me more.", model: "I like swimming in the sea." }, no: { q: "Which season do you like?", model: "I like winter because I can ski." } }
+  },
+  {
+    id: "rain", title: "Rainy Days", scene: "rain", alt: "雨の町。走る男の子、かさをさした女性、車の下にねこ",
+    text: "It rains a lot in June in Japan. People usually carry umbrellas on rainy days. Some people do not like going out in the rain, so they stay at home and watch movies.",
+    q1: { q: "Why do some people stay at home and watch movies?", model: "Because they do not like going out in the rain.", because: true, subj: ["they"], keys: [{ re: "not", label: "not" }, { re: "like", label: "like" }, { re: "rain|rainy", label: "rain" }], noSo: true },
+    q2: { lead: "Please look at the picture.", q: "Where is the cat?", model: "It's under the car.", subj: ["it", "the", "under"], keys: [{ re: "under the car", label: "under the car" }] },
+    q3: { lead: "Please look at the boy.", q: "What is he doing?", model: "He is running.", subj: ["he"], keys: [{ re: "is", label: "is（be動詞）" }, { re: "running", label: "running" }] },
+    q4: { q: "What do you do on rainy days?", model: "I read books at home.", subj: ["i"], min: 4, keys: [] },
+    q5: { q: "Do you like watching movies?", yes: { q: "Please tell me more.", model: "I often watch movies with my brother." }, no: { q: "What do you like to do at home?", model: "I like to play video games." } }
   }
 ];
 
@@ -436,7 +622,7 @@ const CARDS = [
 function norm(t) {
   return (t || "").toLowerCase().replace(/[’`]/g, "'")
     .replace(/\b(he|she|it|there|that|what)'s\b/g, "$1 is").replace(/\bi'm\b/g, "i am").replace(/\b(they|we|you)'re\b/g, "$1 are")
-    .replace(/\b(is|are|do|does|did|was|were)n't\b/g, "$1 not").replace(/\bcan't\b/g, "can not").replace(/\bwon't\b/g, "will not")
+    .replace(/\b(is|are|do|does|did|was|were|have|has)n't\b/g, "$1 not").replace(/\bcan't\b/g, "can not").replace(/\bwon't\b/g, "will not")
     .replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
 }
 const words = t => norm(t).split(" ").filter(Boolean);
@@ -452,7 +638,7 @@ function evaluate(spec, text) {
   if (spec.because) push(w[0] === "because", "Because ～. で答えた", "理由は Because ～. で答える");
   if (spec.subj) {
     const first = spec.because ? w[1] : w[0];
-    push(spec.subj.includes(first), "主語が正しい", `主語は ${spec.subj.filter(s => !["the", "on"].includes(s)).slice(0, 2).map(cap).join(" / ")} で始める`);
+    push(spec.subj.includes(first), "主語が正しい", `主語は ${spec.subj.filter(s => !["the", "on", "under"].includes(s)).slice(0, 2).map(cap).join(" / ")} で始める`);
   }
   (spec.keys || []).forEach(k => push(has(text, k.re), `${k.label} がある`, `${k.label} が抜けている`));
   if (spec.min) push(w.length >= spec.min, "文で答えた", `${spec.min}語以上の文で答える`);
@@ -515,6 +701,9 @@ function renderHome() {
     return `<button class="pick" data-i="${i}"><div class="thumb">${svg(c.scene, c.alt)}</div><div class="meta"><span class="small muted">問題カード ${i + 1}</span><b>${esc(c.title)}</b><span class="last">${l ? `前回 ${l.good} / ${l.total} 項目が◎（${l.date}）` : "まだ練習していません"}</span></div></button>`;
   }).join("");
   $("cardList").querySelectorAll(".pick").forEach(b => b.onclick = () => startExam(CARDS[+b.dataset.i]));
+  $("drillList").innerHTML = DRILLS.map((d, i) => `<button class="drill" data-i="${i}"><b>${esc(d.label)}</b><span>${esc(d.desc)}</span><small>${d.n * d.parts.length}問・カードはランダム</small></button>`).join("");
+  $("drillList").querySelectorAll(".drill").forEach(b => b.onclick = () => startDrill(DRILLS[+b.dataset.i]));
+  renderRecord();
 }
 function initMode() {
   if (SR) {
@@ -529,12 +718,12 @@ function initMode() {
 
 /* ---------- exam UI ---------- */
 const STEPS = [["enter", "入室"], ["silent", "黙読"], ["read", "音読"], ["q1", "No.1"], ["q2", "No.2"], ["q3", "No.3"], ["q4", "No.4"], ["q5", "No.5"], ["exit", "退室"]];
-function setStep(id) {
-  const idx = STEPS.findIndex(s => s[0] === id);
-  $("track").innerHTML = STEPS.map((s, i) => `<li class="${i < idx ? "done" : i === idx ? "now" : ""}">${s[1]}</li>`).join("");
+function setTrack(labels, idx) {
+  $("track").innerHTML = labels.map((l, i) => `<li class="${i < idx ? "done" : i === idx ? "now" : ""}">${esc(l)}</li>`).join("");
 }
+function setStep(id) { setTrack(STEPS.map(s => s[1]), STEPS.findIndex(s => s[0] === id)); }
 function setPaper(mode) {
-  const c = S.card, p = $("paper");
+  const c = S.card || CARDS[0], p = $("paper");
   if (mode === "back") { p.className = "paper"; p.innerHTML = `<div class="back"><div><b>（カードを裏返しています）</b><p>ここからは、あなた自身についての質問です。</p></div></div>`; return; }
   p.className = "paper" + (mode === "blank" ? " blank" : "");
   p.innerHTML = `<div class="ptitle">${esc(c.title)}</div><p class="ptext">${esc(c.text)}</p>${svg(c.scene, c.alt)}`;
@@ -570,6 +759,7 @@ function listenSelf(run, opts) {
     const finish = (pardon) => { cleanup(); resolve({ text: pardon ? "pardon" : $("typed").value.trim(), latency: null, self: true, secs: (performance.now() - t0) / 1000 }); };
     const cleanup = () => { stop(); $("doneBtn").disabled = true; $("pardonBtn").disabled = true; $("typeBox").hidden = true; S.waiters = null; };
     $("doneBtn").disabled = false; $("pardonBtn").disabled = !!opts.noPardon;
+    $("doneBtn").textContent = "答えた";
     $("doneBtn").onclick = () => finish(false);
     $("pardonBtn").onclick = () => finish(true);
     S.waiters = () => { cleanup(); reject(new Stop()); };
@@ -630,84 +820,103 @@ async function ask(run, lead, q, opts) {
   }
   return r;
 }
+async function silent(run) {
+  $("silentBox").hidden = false; setState("wait", "黙読中");
+  let skip = false;
+  $("doneBtn").disabled = false; $("doneBtn").textContent = "黙読を終える"; $("doneBtn").onclick = () => { skip = true; };
+  for (let s = 20; s > 0 && !skip; s--) {
+    $("silentSec").textContent = s;
+    for (let k = 0; k < 10 && !skip; k++) { await sleep(100); guard(run); }
+  }
+  $("silentBox").hidden = true; $("doneBtn").disabled = true;
+}
 
-async function startExam(card) {
-  S.card = card; S.items = []; S.pardons = 0; S.run++;
-  S.mode = document.querySelector('input[name="mode"]:checked').value;
-  const run = S.run;
-  $("home").hidden = true; $("result").hidden = true; $("exam").hidden = false; $("subWrap").hidden = false;
-  notice(""); $("doneBtn").textContent = "答えた"; window.scrollTo(0, 0);
-  setPaper("blank");
-  try {
-    // 入室
-    setStep("enter");
-    await say(run, "Hello. Can I have your card, please?");
-    await sleep(500); guard(run);
-    await say(run, "Thank you. Please have a seat.");
-    const nameR = await ask(run, "", "May I have your name, please?", { wait: 9000, max: 15000, noType: false });
-    record("name", "入室", "May I have your name, please?", nameR, "My name is Sato Yuki.", t => {
-      if (!words(t).length) return { grade: "none", checks: [] };
-      const ok = has(t, "my name is|i am|i'm");
-      return { grade: ok ? "good" : "fair", checks: [{ ok, msg: ok ? "My name is ～. と文で言えた" : "My name is ～. と文で言うとよい" }] };
-    });
-    await say(run, "Thank you. Let's start the test. This is your card.");
+/* one part of the test; exam=true adds the examiner's numbering */
+async function runPart(run, card, part, exam) {
+  S.card = card;
+  if (part === "read") {
     setPaper("card");
-
-    // 黙読
-    setStep("silent");
     await say(run, "First, please read the passage silently.");
-    setState("wait", "黙読中"); $("silentBox").hidden = false;
-    for (let s = 20; s > 0; s--) { $("silentSec").textContent = s; await sleep(1000); guard(run); }
-    $("silentBox").hidden = true;
-
-    // 音読
-    setStep("read");
+    await silent(run);
     await say(run, "All right. Please read the passage aloud.");
-    const readR = await listen(run, { wait: 10000, silence: 3200, max: 50000, target: 4, noPardon: true, noType: true });
+    const r = await listen(run, { wait: 10000, silence: 3200, max: 50000, target: 4, noPardon: true, noType: true });
     guard(run);
-    record("read", "音読", "All right. Please read the passage aloud.", readR, card.title + ". " + card.text, t => evalReading(card, t));
-
-    await say(run, "Now, I'll ask you five questions.");
-    // No.1
-    setStep("q1");
-    const r1 = await ask(run, "No. 1. Please look at the passage.", card.q1.q);
-    record("q1", "No.1 英文", card.q1.q, r1, card.q1.model, t => evaluate(card.q1, t));
-    // No.2
-    setStep("q2");
-    const r2 = await ask(run, "No. 2. " + card.q2.lead, card.q2.q);
-    record("q2", "No.2 イラスト", card.q2.q, r2, card.q2.model, t => evaluate(card.q2, t));
-    // No.3
-    setStep("q3");
-    const r3 = await ask(run, "No. 3. " + card.q3.lead, card.q3.q);
-    record("q3", "No.3 イラスト", card.q3.lead + " " + card.q3.q, r3, card.q3.model, t => evaluate(card.q3, t));
-    // No.4
-    setStep("q4");
-    await say(run, "Now, please turn the card over.");
+    record("read", "音読", "Please read the passage aloud.", r, card.title + ". " + card.text, t => evalReading(card, t));
+  } else if (part === "q1") {
+    setPaper("card");
+    const r = await ask(run, (exam ? "No. 1. " : "") + "Please look at the passage.", card.q1.q);
+    record("q1", "No.1 英文", card.q1.q, r, card.q1.model, t => evaluate(card.q1, t));
+  } else if (part === "q2") {
+    setPaper("card");
+    const r = await ask(run, (exam ? "No. 2. " : "") + card.q2.lead, card.q2.q);
+    record("q2", "No.2 イラスト", card.q2.q, r, card.q2.model, t => evaluate(card.q2, t));
+  } else if (part === "q3") {
+    setPaper("card");
+    const r = await ask(run, (exam ? "No. 3. " : "") + card.q3.lead, card.q3.q);
+    record("q3", "No.3 イラスト", card.q3.lead + " " + card.q3.q, r, card.q3.model, t => evaluate(card.q3, t));
+  } else if (part === "q4") {
+    if (exam) await say(run, "Now, please turn the card over.");
     setPaper("back");
-    const r4 = await ask(run, "No. 4.", card.q4.q);
-    record("q4", "No.4 あなた自身", card.q4.q, r4, card.q4.model, t => evaluate(card.q4, t));
-    // No.5
-    setStep("q5");
-    const r5 = await ask(run, "No. 5.", card.q5.q, { noType: false });
+    const r = await ask(run, exam ? "No. 4." : "", card.q4.q);
+    record("q4", "No.4 あなた自身", card.q4.q, r, card.q4.model, t => evaluate(card.q4, t));
+  } else if (part === "q5") {
+    setPaper("back");
+    const r5 = await ask(run, exam ? "No. 5." : "", card.q5.q);
     let yn = has(r5.text, "yes|yeah|yep|sure|of course") ? "yes" : has(r5.text, "no|not|nope") ? "no" : null;
     if (!yn) yn = await askYesNo(run);
-    const yesno = yn === "yes" ? "Yes, I do." : "No, I don't.";
-    record("q5a", "No.5 Yes / No", card.q5.q, r5, yesno, t => {
+    const short = yn === "yes" ? (card.q5.y || "Yes, I do.") : (card.q5.n || "No, I don't.");
+    record("q5a", "No.5 Yes / No", card.q5.q, r5, short, t => {
       if (!words(t).length) return { grade: "none", checks: [] };
-      const ok = has(t, "yes|no"), full = has(t, "do|does|have|am|not");
-      return { grade: ok && full ? "good" : ok ? "fair" : "poor", checks: [{ ok, msg: ok ? "Yes / No で答えた" : "まず Yes か No で答える" }, { ok: full, msg: full ? "Yes, I do. の形で言えた" : "Yes, I do. / No, I don't. まで言う" }] };
+      const ok = has(t, "yes|no"), full = has(t, "do|does|have|has|am|is|can|not");
+      return { grade: ok && full ? "good" : ok ? "fair" : "poor", checks: [{ ok, msg: ok ? "Yes / No で答えた" : "まず Yes か No で答える" }, { ok: full, msg: full ? `${short.replace(/\.$/, "")} の形で言えた` : `${short} まで言う` }] };
     });
     const f = card.q5[yn];
     const r6 = await ask(run, "", f.q);
     record("q5b", yn === "yes" ? "No.5 くわしく" : "No.5 別の質問", f.q, r6, f.model, t => evaluate({ subj: ["i", "my", "we", "it"], min: 5, keys: [] }, t));
+  }
+}
 
-    // 退室
+function beginSession(kind) {
+  S.kind = kind; S.items = []; S.pardons = 0; S.run++;
+  S.mode = document.querySelector('input[name="mode"]:checked').value;
+  $("home").hidden = true; $("result").hidden = true; $("exam").hidden = false; $("subWrap").hidden = false;
+  $("fb").hidden = true; notice(""); window.scrollTo(0, 0);
+  setPaper("blank");
+  return S.run;
+}
+
+async function startExam(card) {
+  S.card = card;
+  const run = beginSession("exam");
+  try {
+    setStep("enter");
+    await say(run, "Hello. Can I have your card, please?");
+    await sleep(500); guard(run);
+    await say(run, "Thank you. Please have a seat.");
+    const nameR = await ask(run, "", "May I have your name, please?", { wait: 9000, max: 15000 });
+    record("name", "入室", "May I have your name, please?", nameR, "My name is Sato Yuki.", t => {
+      if (!words(t).length) return { grade: "none", checks: [] };
+      const ok = has(t, "my name is|i am");
+      return { grade: ok ? "good" : "fair", checks: [{ ok, msg: ok ? "My name is ～. と文で言えた" : "My name is ～. と文で言うとよい" }] };
+    });
+    await say(run, "Thank you. Let's start the test. This is your card.");
+    setPaper("card");
+    setStep("silent");
+    await say(run, "First, please read the passage silently.");
+    await silent(run);
+    setStep("read");
+    await say(run, "All right. Please read the passage aloud.");
+    const readR = await listen(run, { wait: 10000, silence: 3200, max: 50000, target: 4, noPardon: true, noType: true });
+    guard(run);
+    record("read", "音読", "Please read the passage aloud.", readR, card.title + ". " + card.text, t => evalReading(card, t));
+    await say(run, "Now, I'll ask you five questions.");
+    for (const part of ["q1", "q2", "q3", "q4", "q5"]) { setStep(part); await runPart(run, card, part, true); }
     setStep("exit");
     await say(run, "This is the end of the test. Could I have the card back, please?");
     setPaper("blank");
     await sleep(500); guard(run);
     await say(run, "Thank you. You may go now.");
-    const bye = await listen(run, { wait: 7000, max: 10000, noPardon: true, noType: false });
+    const bye = await listen(run, { wait: 7000, max: 10000, noPardon: true });
     guard(run);
     record("bye", "退室", "Thank you. You may go now.", bye, "Thank you. Goodbye.", t => {
       if (!words(t).length) return { grade: "none", checks: [] };
@@ -719,6 +928,56 @@ async function startExam(card) {
   } catch (e) {
     if (!(e instanceof Stop)) { console.error(e); notice("エラーが起きました：" + e.message); }
   }
+}
+
+const DRILLS = [
+  { id: "read", label: "音読", desc: "黙読20秒 → タイトルから音読", parts: ["read"], n: 3 },
+  { id: "q1", label: "No.1 英文の質問", desc: "Because ～. で答える", parts: ["q1"], n: 6 },
+  { id: "q23", label: "No.2・No.3 イラスト", desc: "There are ～. / He is ～ing.", parts: ["q2", "q3"], n: 3 },
+  { id: "q45", label: "No.4・No.5 あなた自身", desc: "自分のことを文で答える", parts: ["q4", "q5"], n: 3 }
+];
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+async function startDrill(d) {
+  S.drill = d;
+  const run = beginSession("drill");
+  const tasks = [];
+  shuffle(CARDS.slice()).slice(0, d.n).forEach(c => d.parts.forEach(p => tasks.push({ c, p })));
+  try {
+    for (let i = 0; i < tasks.length; i++) {
+      setTrack(tasks.map((t, k) => `${k + 1}`), i);
+      const before = S.items.length;
+      await runPart(run, tasks[i].c, tasks[i].p, false);
+      for (let k = before; k < S.items.length; k++) await feedback(run, S.items[k], i === tasks.length - 1 && k === S.items.length - 1);
+    }
+    showResult();
+  } catch (e) {
+    if (!(e instanceof Stop)) { console.error(e); notice("エラーが起きました：" + e.message); }
+  }
+}
+/* instant feedback after each drill answer */
+function feedback(run, it, last) {
+  return new Promise((resolve, reject) => {
+    const fb = $("fb"), g = it.ev.grade;
+    setState("wait", "チェック結果");
+    const chips = (it.ev.checks || []).map(c => `<span class="chip ${c.ok ? "ok" : "ng"}">${esc(c.msg)}</span>`).join("");
+    const missed = it.ev.missed && it.ev.missed.length ? `<span class="chip info">聞き取れなかった語：${esc(it.ev.missed.join(", "))}</span>` : "";
+    fb.innerHTML = `<div class="fbhead"><span class="g ${g}">${MARK[g]}</span><b>${esc(it.label)}</b></div>
+      <dl class="ans"><dt>あなた</dt><dd>${it.text ? esc(it.text) : `<span class="muted">${it.self ? "（入力なし）" : "（聞き取れませんでした）"}</span>`}</dd>
+      <dt>模範解答</dt><dd>${esc(it.model)}<button class="play" id="fbPlay">▶ 聞く</button></dd></dl>
+      ${chips || missed ? `<div class="chips">${chips}${missed}</div>` : ""}
+      ${g === "self" ? `<div class="rate">自己採点：${["good", "fair", "poor"].map(x => `<button data-g="${x}" aria-pressed="false">${MARK[x]}</button>`).join("")}</div>` : ""}
+      <div class="row"><button class="btn primary" id="fbNext">${last ? "結果を見る" : "次の問題へ"}</button></div>`;
+    fb.hidden = false;
+    $("fbPlay").onclick = () => speak(it.model, .9);
+    fb.querySelectorAll(".rate button").forEach(b => b.onclick = () => {
+      it.ev.selfGrade = b.dataset.g;
+      fb.querySelectorAll(".rate button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      const ge = fb.querySelector(".g"); ge.className = "g " + b.dataset.g; ge.textContent = MARK[b.dataset.g];
+    });
+    $("fbNext").onclick = () => { fb.hidden = true; S.waiters = null; resolve(); };
+    S.waiters = () => { fb.hidden = true; reject(new Stop()); };
+    try { $("fbNext").focus({ preventScroll: true }); } catch (e) { }
+  });
 }
 function askYesNo(run) {
   return new Promise((resolve, reject) => {
@@ -732,7 +991,7 @@ function record(id, label, q, r, model, judge) {
   const text = r.text === "pardon" ? "" : r.text;
   const ev = judge(text);
   if (r.self && !words(text).length) ev.grade = "self";
-  S.items.push({ id, label, q, text, model, ev, latency: r.latency, secs: r.secs, self: r.self });
+  S.items.push({ id, label, q, text, model, ev, latency: r.latency, secs: r.secs, self: r.self, card: S.card ? S.card.title : "" });
 }
 function quit() {
   S.run++; if (TTS) TTS.cancel();
@@ -746,18 +1005,20 @@ function quit() {
 const MARK = { good: "◎", fair: "△", poor: "×", none: "×", self: "？" };
 function showResult() {
   $("exam").hidden = true; $("result").hidden = false; $("subWrap").hidden = true;
-  const sec = $("result");
+  S.histKey = Date.now();
+  const sec = $("result"), drill = S.kind === "drill";
   const lat = S.items.filter(i => i.latency != null && i.id !== "read").map(i => i.latency);
   const avgLat = lat.length ? lat.reduce((a, b) => a + b, 0) / lat.length : null;
   const longSilence = lat.filter(x => x > 5).length;
   sec.innerHTML = `
     <div class="panel">
+      <span class="small muted">${drill ? "問題別ドリル：" + esc(S.drill.label) : "本番練習：" + esc(S.card.title)}</span>
       <div class="score"><span class="n" id="scoreN"></span><span id="scoreTxt"></span></div>
       <p class="small muted">${S.mode === "mic" ? "音声認識で聞き取った英語をもとに判定しています。認識ミスもあるので、模範解答と見比べてください。" : "英文を入力しなかった項目は「？」になります。模範解答を聞いて、◎△× を自分で付けてください。"}</p>
-      <div class="row"><button class="btn primary" id="again">同じカードでもう一度</button><button class="btn" id="back">別のカードを選ぶ</button></div>
+      <div class="row"><button class="btn primary" id="again">${drill ? "別の問題でもう一度" : "同じカードでもう一度"}</button><button class="btn" id="back">ホームに戻る</button></div>
     </div>
     <div class="items">${S.items.map((it, i) => itemHTML(it, i)).join("")}</div>
-    <div class="panel">
+    ${drill ? "" : `<div class="panel">
       <h2>アティチュード（態度）</h2>
       <div class="chips">
         ${avgLat != null ? `<span class="chip ${avgLat <= 4 ? "ok" : "ng"}">答え始めまで 平均 ${avgLat.toFixed(1)} 秒</span>` : ""}
@@ -771,7 +1032,7 @@ function showResult() {
         <label><input type="checkbox" id="at4"> わからないときも黙らず、Pardon? や知っている英語で答えた</label>
       </div>
       <p class="tip">聞き返しは使って大丈夫です。黙ってしまうより、“Pardon?” と言うほうがずっと良い印象になります。</p>
-    </div>`;
+    </div>`}`;
   sec.querySelectorAll(".play").forEach(b => b.onclick = () => speak(S.items[+b.dataset.i].model, .9));
   sec.querySelectorAll(".rate button").forEach(b => b.onclick = () => {
     const it = S.items[+b.dataset.i]; it.ev.selfGrade = b.dataset.g;
@@ -779,18 +1040,18 @@ function showResult() {
     const gEl = b.closest(".item").querySelector(".g"); gEl.className = "g " + b.dataset.g; gEl.textContent = MARK[b.dataset.g];
     updateScore();
   });
-  $("again").onclick = () => startExam(S.card);
+  $("again").onclick = () => drill ? startDrill(S.drill) : startExam(S.card);
   $("back").onclick = quit;
   updateScore(); window.scrollTo(0, 0);
 }
 function itemHTML(it, i) {
-  const g = it.ev.grade;
+  const g = it.ev.selfGrade || it.ev.grade;
   const chips = (it.ev.checks || []).map(c => `<span class="chip ${c.ok ? "ok" : "ng"}">${esc(c.msg)}</span>`).join("");
   const missed = it.ev.missed && it.ev.missed.length ? `<span class="chip info">聞き取れなかった語：${esc(it.ev.missed.join(", "))}</span>` : "";
-  const time = it.secs != null && it.id !== "read" ? "" : (it.secs != null ? `<span class="chip info">${it.secs.toFixed(0)} 秒</span>` : "");
-  const rate = g === "self" ? `<div class="rate">自己採点：${["good", "fair", "poor"].map(x => `<button data-i="${i}" data-g="${x}" aria-pressed="false">${MARK[x]}</button>`).join("")}</div>` : "";
+  const time = it.id === "read" && it.secs != null && !it.self ? `<span class="chip info">${it.secs.toFixed(0)} 秒</span>` : "";
+  const rate = it.ev.grade === "self" ? `<div class="rate">自己採点：${["good", "fair", "poor"].map(x => `<button data-i="${i}" data-g="${x}" aria-pressed="${it.ev.selfGrade === x}">${MARK[x]}</button>`).join("")}</div>` : "";
   return `<article class="item"><div class="g ${g}">${MARK[g]}</div>
-    <div class="lab">${esc(it.label)}</div>
+    <div class="lab">${esc(it.label)}${S.kind === "drill" ? " · " + esc(it.card) : ""}</div>
     <div class="q">${esc(it.q)}</div>
     <dl class="ans"><dt>あなた</dt><dd>${it.text ? esc(it.text) : `<span class="muted">${it.self ? "（入力なし）" : "（聞き取れませんでした）"}</span>`}</dd>
     <dt>模範解答</dt><dd>${esc(it.model)}<button class="play" data-i="${i}" aria-label="模範解答を聞く">▶ 聞く</button></dd></dl>
@@ -801,8 +1062,47 @@ function updateScore() {
   const good = gs.filter(g => g === "good").length, pending = gs.filter(g => g === "self").length;
   $("scoreN").textContent = `${good} / ${gs.length}`;
   $("scoreTxt").textContent = pending ? `項目が◎（自己採点待ち ${pending} 項目）` : "項目が◎";
-  const d = new Date();
-  saveLast(S.card.id, { good, total: gs.length, date: `${d.getMonth() + 1}/${d.getDate()}` });
+  const d = new Date(), date = `${d.getMonth() + 1}/${d.getDate()}`;
+  if (S.kind === "exam") saveLast(S.card.id, { good, total: gs.length, date });
+  const h = loadHist(), entry = { key: S.histKey, date, kind: S.kind, title: S.kind === "drill" ? S.drill.label : S.card.title, good, total: gs.length, grades: S.items.map((it, i) => [it.id, gs[i]]) };
+  const at = h.findIndex(e => e.key === S.histKey);
+  if (at >= 0) h[at] = entry; else h.push(entry);
+  saveHist(h);
+}
+
+/* ---------- history ---------- */
+const HIST = "eiken3-history";
+function loadHist() { try { const v = JSON.parse(localStorage.getItem(HIST) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function saveHist(h) { try { localStorage.setItem(HIST, JSON.stringify(h.slice(-80))); } catch (e) { } }
+const AREAS = [["read", "音読", "read"], ["q1", "No.1 英文", "q1"], ["q2", "No.2 イラスト", "q23"], ["q3", "No.3 イラスト", "q23"], ["q4", "No.4 あなた自身", "q45"], ["q5", "No.5 あなた自身", "q45"]];
+function renderRecord() {
+  const h = loadHist(), box = $("record");
+  if (!h.length) {
+    box.innerHTML = `<p class="muted">まだ記録がありません。本番練習かドリルを1回終えると、ここに結果と苦手な問題が表示されます（記録はこの端末のブラウザにだけ保存されます）。</p>`;
+    return;
+  }
+  const stat = {};
+  h.forEach(e => (e.grades || []).forEach(([id, g]) => {
+    if (g === "self") return;
+    const key = id.startsWith("q5") ? "q5" : id;
+    const s = stat[key] || (stat[key] = { n: 0, good: 0 });
+    s.n++; if (g === "good") s.good++;
+  }));
+  const rows = AREAS.filter(a => stat[a[0]]).map(a => ({ a, rate: stat[a[0]].good / stat[a[0]].n, n: stat[a[0]].n }));
+  const weak = rows.length ? rows.reduce((m, r) => r.rate < m.rate ? r : m) : null;
+  box.innerHTML = `
+    <div class="rec">
+      <div class="rec-col">
+        <h3>問題ごとの ◎ の割合</h3>
+        <div class="bars">${rows.map(r => `<div class="brow"><span>${r.a[1]}</span><div class="bar"><i style="width:${Math.round(r.rate * 100)}%"></i></div><span class="pct">${Math.round(r.rate * 100)}%</span></div>`).join("")}</div>
+        ${weak && weak.rate < 1 ? `<p class="tip">いちばん伸ばしたいのは <b>${weak.a[1]}</b> です。<button class="btn small-btn" id="weakGo">ドリルで練習する</button></p>` : ""}
+      </div>
+      <div class="rec-col">
+        <h3>最近の練習</h3>
+        <ul class="hist">${h.slice(-6).reverse().map(e => `<li><span class="muted">${esc(e.date)}</span><span>${e.kind === "drill" ? "ドリル" : "本番"}：${esc(e.title)}</span><b>${e.good}/${e.total}</b></li>`).join("")}</ul>
+      </div>
+    </div>`;
+  if (weak && $("weakGo")) $("weakGo").onclick = () => startDrill(DRILLS.find(d => d.id === weak.a[2]));
 }
 
 /* ---------- wiring ---------- */
