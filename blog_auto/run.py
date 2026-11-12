@@ -19,7 +19,7 @@ import re
 import sys
 from pathlib import Path
 
-from . import wordpress
+from . import images, wordpress
 from .config import CATEGORIES, INPUT_DIR, KIND_LABEL, OUTPUT_DIR
 from .generate import generate, today_jst
 from .render import char_count, to_html, to_markdown
@@ -63,7 +63,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("kind", choices=["blog", "story", "check"])
     ap.add_argument("--topic", default="", help="テーマを指定する")
     ap.add_argument("--dry-run", action="store_true", help="WordPress に登録しない")
-    ap.add_argument("--no-review-note", action="store_true", help="下書きの末尾に確認メモを付けない")
     args = ap.parse_args(argv)
 
     if args.kind == "check":
@@ -86,17 +85,15 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  テーマ: {topic or ('活動報告メモ ' + memo_path.name if memo else '自動で決める')}")
 
     article, notes = generate(kind, topic=topic, memo=memo)
-    html = to_html(article, kind, review_note=not args.no_review_note)
 
     now = today_jst()
-    stem = f"{now:%Y-%m-%d}_{kind}_{article['slug'][:40] or 'post'}"
+    slug = re.sub(r"[^a-z0-9-]+", "-", article["slug"].lower()).strip("-")[:40] or "post"
+    article["slug"] = slug
+    stem = f"{now:%Y-%m-%d}_{kind}_{slug}"
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUTPUT_DIR / f"{stem}.md").write_text(to_markdown(article, notes), encoding="utf-8")
-    (OUTPUT_DIR / f"{stem}.html").write_text(html, encoding="utf-8")
-    (OUTPUT_DIR / f"{stem}.json").write_text(json.dumps(article, ensure_ascii=False, indent=1), encoding="utf-8")
 
-    print(f"  タイトル: {article['title']}（本文 {char_count(article)} 字）")
-    print(f"  保存先: {OUTPUT_DIR / stem}.md")
+    # 画像（アイキャッチ・本文）を AI で作る
+    image_files = images.generate_all(article, OUTPUT_DIR / "images", stem)
 
     record = {
         "date": now.isoformat(timespec="seconds"),
@@ -109,6 +106,24 @@ def main(argv: list[str] | None = None) -> int:
         "wp_edit_url": None,
     }
 
+    uploaded: dict[int, dict] = {}
+    featured_id = None
+    if not args.dry_run:
+        # 画像をメディアライブラリに登録してから、本文に入れる
+        if image_files["featured"]:
+            featured_id = wordpress.upload_media(image_files["featured"], alt=article["title"])["id"]
+        for i, path in image_files["blocks"].items():
+            m = wordpress.upload_media(path, alt=article["blocks"][i]["text"][:100])
+            uploaded[i] = {"id": m["id"], "url": m["source_url"]}
+
+    html = to_html(article, kind, uploaded)
+    (OUTPUT_DIR / f"{stem}.md").write_text(to_markdown(article, notes, image_files), encoding="utf-8")
+    (OUTPUT_DIR / f"{stem}.html").write_text(html, encoding="utf-8")
+    (OUTPUT_DIR / f"{stem}.json").write_text(json.dumps(article, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    print(f"  タイトル: {article['title']}（本文 {char_count(article)} 字）")
+    print(f"  保存先: {OUTPUT_DIR / stem}.md")
+
     if args.dry_run:
         print("  --dry-run のため WordPress には登録していません")
     else:
@@ -116,8 +131,9 @@ def main(argv: list[str] | None = None) -> int:
             title=article["title"],
             content=html,
             excerpt=article["excerpt"],
-            slug=article["slug"],
+            slug=slug,
             category_id=CATEGORIES[kind],
+            featured_media=featured_id,
         )
         record["wp_id"] = post["id"]
         record["wp_edit_url"] = f"{wordpress.SITE_URL}/wp-admin/post.php?post={post['id']}&action=edit"

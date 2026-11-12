@@ -37,6 +37,7 @@ jobs:
       WP_URL: ${{ vars.WP_URL || 'https://platz2017.com' }}
       WP_USER: ${{ secrets.WP_USER }}
       WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 

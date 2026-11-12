@@ -21,7 +21,7 @@ def _urls(route: str) -> list[tuple[str, dict]]:
     ]
 
 
-def _request(method: str, route: str, *, params=None, json=None, auth=None, files=None, headers=None):
+def _request(method: str, route: str, *, params=None, json=None, auth=None, data=None, headers=None):
     last = None
     for url, extra in _urls(route):
         r = requests.request(
@@ -30,7 +30,7 @@ def _request(method: str, route: str, *, params=None, json=None, auth=None, file
             params={**extra, **(params or {})},
             json=json,
             auth=auth,
-            data=files,
+            data=data,
             headers={**HEADERS, **(headers or {})},
             timeout=TIMEOUT,
         )
@@ -67,7 +67,26 @@ def check_login() -> dict:
     return _check(r, "WordPress へのログイン確認")
 
 
-def create_draft(*, title: str, content: str, category_id: int, excerpt: str = "", slug: str = "") -> dict:
+def upload_media(path, *, alt: str = "") -> dict:
+    """画像をメディアライブラリに登録する。"""
+    from pathlib import Path
+
+    path = Path(path)
+    r = _request(
+        "POST",
+        "/wp/v2/media",
+        data=path.read_bytes(),
+        auth=_auth(),
+        headers={"Content-Type": "image/jpeg", "Content-Disposition": f'attachment; filename="{path.name}"'},
+    )
+    media = _check(r, f"画像のアップロード（{path.name}）")
+    if alt:
+        _request("POST", f"/wp/v2/media/{media['id']}", json={"alt_text": alt}, auth=_auth())
+    return media
+
+
+def create_draft(*, title: str, content: str, category_id: int, excerpt: str = "", slug: str = "",
+                 featured_media: int | None = None) -> dict:
     """記事を『下書き』として登録する（公開はしない）。"""
     body = {
         "title": title,
@@ -78,5 +97,7 @@ def create_draft(*, title: str, content: str, category_id: int, excerpt: str = "
     }
     if slug:
         body["slug"] = slug
+    if featured_media:
+        body["featured_media"] = featured_media
     r = _request("POST", "/wp/v2/posts", json=body, auth=_auth())
     return _check(r, "下書きの登録")

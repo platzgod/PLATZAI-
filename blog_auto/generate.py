@@ -31,6 +31,7 @@ ARTICLE_SCHEMA = {
         "title": {"type": "string", "description": "記事タイトル"},
         "slug": {"type": "string", "description": "URL用の短い英小文字とハイフン（例: entrance-exam-interview）"},
         "excerpt": {"type": "string", "description": "一覧に出る抜粋。80〜120字"},
+        "featured_image": {"type": "string", "description": "アイキャッチ画像として画像生成AIに作らせる場面の説明"},
         "blocks": {
             "type": "array",
             "description": "本文。上から順に並べる",
@@ -40,7 +41,7 @@ ARTICLE_SCHEMA = {
                     "type": {"type": "string", "enum": ["heading", "paragraph", "image"]},
                     "text": {
                         "type": "string",
-                        "description": "heading: 見出し文 / paragraph: 段落（行内の改行は \\n） / image: 入れる写真の説明",
+                        "description": "heading: 見出し文 / paragraph: 段落（行内の改行は \\n） / image: 画像生成AIに作らせる場面の説明",
                     },
                 },
                 "required": ["type", "text"],
@@ -67,7 +68,7 @@ ARTICLE_SCHEMA = {
             "items": {"type": "string"},
         },
     },
-    "required": ["title", "slug", "excerpt", "blocks", "sources", "check_points"],
+    "required": ["title", "slug", "excerpt", "featured_image", "blocks", "sources", "check_points"],
     "additionalProperties": False,
 }
 
@@ -194,6 +195,7 @@ def write_article(client, *, kind: str, posts: list[dict], notes: str, memo: str
 ## 過去の記事（文体の手本。本文中の「■」は見出し）
 {examples}"""
 
+    n_img = "1〜3" if kind == "blog" else "1〜2"
     memo_part = f"\n<塾長メモ>\n{memo}\n</塾長メモ>\n" if memo else ""
     user = f"""次の調査メモをもとに、記事を1本書いてください。
 {memo_part}
@@ -207,7 +209,11 @@ def write_article(client, *, kind: str, posts: list[dict], notes: str, memo: str
 - 情報源の文章を写さず、手本の口調・リズム・改行のしかたで、塾長の言葉に置き換える。
 - 段落（paragraph）は1〜2文。行内の改行は \\n で表す。「」の声かけは1行に独立させる。
 - 見出し（heading）には「■」を付けない。
-- 写真を入れたい位置に image ブロックを置き、どんな写真が合うかを書く。
+- 画像は画像生成AIで作る。本文の画像を入れたい位置に image ブロックを置き（{n_img}枚）、
+  featured_image にはアイキャッチ（記事一覧に出る横長の画像）を書く。どちらも
+  「誰が・どこで・何をしている場面か」を具体的に1〜2文で書く。文字の入った画像、実在の学校・人物、
+  記事にない出来事（例: 合格発表の掲示）は描かせない。活動報告の写真は塾長が撮るので、
+  型Aでは本文の image は1枚までにし、残りは塾長の写真用に「（塾長の写真）〇〇の様子」と書く。
 - sources には本文で使った事実の出典を、check_points には公開前に確かめてほしい点を入れる。"""
 
     log("● 執筆中...")
