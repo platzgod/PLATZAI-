@@ -19,3 +19,8 @@ python3 builder/test_vba.py dist/合格一貫カリキュラム_マスターテ�
 - `builder/vba/` … VBA ソース（vbaProject.bin はここから生成）
 - `builder/vbaproject.py` … VBA プロジェクト（MS-OVBA / CFB）の生成
 - `builder/package.py` … .xlsx → .xlsm への変換とボタンの追加
+
+## ブログ自動更新システム
+
+- `blog_auto/` … platz2017.com の「塾長ブログ」「PLATZ STORY」の記事を毎月自動で作り、WordPress に下書き登録する（GitHub Actions: `.github/workflows/blog-auto.yml`）
+- 設定と使い方は `blog_auto/README.md`
