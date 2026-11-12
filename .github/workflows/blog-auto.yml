@@ -1,0 +1,80 @@
+name: ブログ記事の自動作成
+
+on:
+  schedule:
+    # 時刻は UTC（日本時間 = UTC + 9時間）
+    - cron: "13 0 1 * *"    # 毎月1日 9:13（日本時間）… 塾長ブログ
+    - cron: "13 0 15 * *"   # 毎月15日 9:13（日本時間）… PLATZ STORY
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "作る記事（check = WordPress へのログイン確認だけ）"
+        type: choice
+        options: [blog, story, check]
+        default: blog
+      topic:
+        description: "テーマ（空なら自動で決める）"
+        type: string
+        required: false
+      dry_run:
+        description: "WordPress に登録せず、ファイルに保存するだけ"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: blog-auto
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      WP_URL: ${{ vars.WP_URL || 'https://platz2017.com' }}
+      WP_USER: ${{ secrets.WP_USER }}
+      WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r blog_auto/requirements.txt
+
+      - name: 作る記事の種類を決める
+        id: kind
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "${{ github.event.schedule }}" = "13 0 15 * *" ]; then echo "kind=story" >> "$GITHUB_OUTPUT"; else echo "kind=blog" >> "$GITHUB_OUTPUT"; fi
+          else
+            echo "kind=${{ inputs.kind }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 過去記事を最新にする
+        if: steps.kind.outputs.kind != 'check'
+        run: python -m blog_auto.collect
+
+      - name: 記事を作成して下書き登録
+        env:
+          TOPIC: ${{ inputs.topic }}
+        run: |
+          args=("${{ steps.kind.outputs.kind }}")
+          if [ -n "$TOPIC" ]; then args+=(--topic "$TOPIC"); fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then args+=(--dry-run); fi
+          python -m blog_auto.run "${args[@]}"
+
+      - name: 作成した記事と履歴を保存
+        if: steps.kind.outputs.kind != 'check'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add blog_auto/output blog_auto/inputs blog_auto/corpus
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -m "ブログ記事を自動作成（${{ steps.kind.outputs.kind }}）"
+          git push
