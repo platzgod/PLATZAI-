@@ -19,3 +19,14 @@ python3 builder/test_vba.py dist/合格一貫カリキュラム_マスターテ�
 - `builder/vba/` … VBA ソース（vbaProject.bin はここから生成）
 - `builder/vbaproject.py` … VBA プロジェクト（MS-OVBA / CFB）の生成
 - `builder/package.py` … .xlsx → .xlsm への変換とボタンの追加
+
+## 入塾書類の自動作成（高校生）
+
+- `dist/入塾書類作成_高校生.xlsx` … 入力シートに入れると、入塾提案書・概要書面・入塾申込書・入塾契約書（同意書つき）が自動で埋まる（マクロなし、生徒ごとにコピーして使う）
+- `dist/入塾書類_前提と仮定の一覧.md` … 料金の決まり方、元の書類との食い違いの扱い、特定商取引法への対応、動作確認の結果
+- `dist/入塾書類_見本（印刷イメージ）.pdf`、`dist/preview_入塾書類/` … 印刷イメージ
+
+```
+python3 builder/enroll/build_enroll.py dist/入塾書類作成_高校生.xlsx      # ブックを作る（料金は builder/enroll/fees.py）
+python3 builder/enroll/test_enroll.py dist/入塾書類作成_高校生.xlsx       # LibreOffice で再計算し、参照計算と突き合わせる
+```
